@@ -2,8 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Feature branches must run CI too, otherwise a lot lands unverified.
+    branches: [main, 'claude/**']
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
