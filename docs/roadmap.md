@@ -20,7 +20,9 @@ Un lot est terminé quand **tous** ces points sont vrais :
 - [ ] Les écrans fonctionnent à 375 px et ont été vérifiés au clavier.
 - [ ] `axe` ne remonte aucune violation critique sur les écrans du lot.
 - [ ] La matrice de permissions du lot est testée, y compris les cas de refus.
-- [ ] Si le lot expose des données au portail : test de fuite écrit et vert.
+- [ ] Si le lot expose des données au portail : test de fuite écrit et vert, **et la vue `portal.*` liste explicitement ses colonnes** (ADR-026).
+- [ ] Aucun SDK d'hébergeur importé hors de `src/lib/storage` et `src/lib/mail` (ADR-021).
+- [ ] Tout montant introduit porte sa devise ; aucun agrégat ne somme deux devises (ADR-024).
 - [ ] Documentation mise à jour (`database.md` si le schéma bouge, `decisions.md` si un arbitrage a été pris).
 
 ---
@@ -54,18 +56,21 @@ Un lot est terminé quand **tous** ces points sont vrais :
 ## LOT 0 — Socle technique
 **But** : personne n'écrit de fonctionnalité avant que la chaîne de qualité existe.
 
-1. `pnpm` + Next.js 15 + TypeScript `strict` + `noUncheckedIndexedAccess`.
+1. `pnpm` + Next.js 15 + TypeScript `strict` + `noUncheckedIndexedAccess` + `output: 'standalone'`.
 2. Tailwind v4 + jetons Doomee dans `globals.css` + shadcn/ui initialisé.
 3. Biome, Lefthook (pre-commit : format + lint + typecheck).
-4. Docker Compose : PostgreSQL 16.
+4. **Docker Compose** : PostgreSQL 16 + **MinIO** (stockage S3 local) — l'environnement de développement est déjà portable (ADR-021).
 5. Drizzle + `drizzle.config.ts` + première migration vide.
 6. Vitest + Testcontainers + Playwright configurés, un test vert par niveau.
 7. GitHub Actions : `typecheck → lint → unit → integration → build → e2e`.
 8. next-intl : routage `/[locale]`, `fr.json` / `en.json`, **test de parité des clés**.
 9. Sentry, logs pino, variables d'environnement validées par Zod au démarrage.
-10. `CLAUDE.md` + `docs/` versionnés.
+10. **`Dockerfile` multi-étapes** produisant une image exécutable partout (ADR-021).
+11. **Règles de dépendance vérifiées en CI** : `app → modules → db|lib`, et aucun SDK d'infrastructure hors `src/lib/storage` / `src/lib/mail`.
+12. `CLAUDE.md` + `docs/` versionnés.
 
-✅ **Sortie** : `pnpm ci` est vert. Un `/fr` et un `/en` s'affichent. La CI bloque sur une clé i18n manquante.
+✅ **Sortie** : `pnpm ci` est vert. Un `/fr` et un `/en` s'affichent. La CI bloque sur une clé i18n manquante
+et sur une violation de frontière de module. L'image Docker démarre et répond.
 
 ---
 
@@ -73,7 +78,7 @@ Un lot est terminé quand **tous** ces points sont vrais :
 **But** : la sécurité d'abord, jamais après. C'est le lot le plus important du projet.
 
 1. Schéma : `organizations`, `users`, `memberships`, `invitations`, `client_user_access`, `subscriptions` + tables Better Auth.
-2. Rôles PostgreSQL `app_user`, `app_portal`, `app_migrator` ; migration RLS écrite à la main.
+2. Rôles PostgreSQL `app_user`, `app_portal`, `app_migrator` ; schéma `portal` ; migration RLS écrite à la main.
 3. `src/db/tenant.ts` : `withTenant()` — **seul** export donnant accès à la base. Deux pools.
 4. Better Auth : inscription, connexion, vérification e-mail, réinitialisation, lien magique, session en base.
 5. Invitations : envoi, acceptation, expiration, révocation.
@@ -116,6 +121,7 @@ Un lot est terminé quand **tous** ces points sont vrais :
 4. Liste (recherche, filtre statut, tri) + fiche client avec onglets (les onglets vides s'activeront aux lots suivants).
 5. `activity_events` : première implémentation + composant `Timeline` branché sur l'historique client.
 6. Invitation d'un contact au portail (crée un `membership` rôle `client` + `client_user_access`).
+7. **Contact multi-comptes** (ADR-023) : l'invitation reconnaît un utilisateur existant et lui ajoute un accès, au lieu d'échouer sur l'unicité. Test : un contact rattaché à deux clients, et à deux organisations.
 
 ✅ **Sortie** : E2E « créer un client » ✅ FR + EN.
 
@@ -150,9 +156,9 @@ Un lot est terminé quand **tous** ces points sont vrais :
 
 ## LOT 6 — Objectifs · *critère MVP 3*
 1. Schéma `objectives` + taxonomie `objective_types` + seed.
-2. CRUD objectif : type, métrique, cible, unité, devise, période, responsable.
+2. CRUD objectif : type, métrique, cible, unité, **devise** (ADR-024 : stockage + affichage, pas de conversion), période, responsable.
 3. Écran « Objectifs » du projet : `Objectif → Résultat réel → Écart → Analyse` (colonne « réel » vide à ce stade).
-4. Service `gap` (pur, testé) : écart, % d'atteinte, direction de la métrique.
+4. Service `gap` (pur, testé) : écart, % d'atteinte, direction de la métrique. **Refuse de calculer un écart entre deux devises différentes** et le signale (ADR-024).
 5. Catalogue `metrics` + seed des 24 métriques, y compris les métriques dérivées.
 
 ✅ **Sortie** : E2E « définir les objectifs d'un projet ».
@@ -193,8 +199,8 @@ Un lot est terminé quand **tous** ces points sont vrais :
 ## LOT 9 — Portail client · *critères MVP 8, 13* 🔒
 **Deuxième lot critique en sécurité.**
 
-1. `PortalShell`, routes `(portal)`, garde de rôle, **pool `app_portal`**.
-2. Politiques RLS portail sur les 15 tables exposées.
+1. `PortalShell`, routes `(portal)`, garde de rôle, **pool `app_portal`**, sélecteur d'organisation pour les contacts multi-comptes (ADR-023).
+2. Politiques RLS portail sur les 15 tables exposées + **vues `portal.*` à colonnes explicites** (ADR-026) ; `REVOKE ALL ON SCHEMA public FROM app_portal`.
 3. Overview : avancement, santé, prochaines étapes, notifications.
 4. Projects · Deliverables (**`✓ Approve` / `↻ Request changes` + commentaire**) · Results · Reports (vide jusqu'au lot 12) · Messages (fil de commentaires partagés).
 5. Parcours d'invitation client (lien magique) + définition du mot de passe.
@@ -204,7 +210,9 @@ Un lot est terminé quand **tous** ces points sont vrais :
 - Pour chaque table exposée : un client ne voit ni `is_client_visible = false`, ni un autre client, ni une autre organisation.
 - Un client authentifié atteignant une URL interne reçoit **404** (ne jamais confirmer l'existence).
 - Aucun commentaire `internal` n'apparaît jamais dans une réponse du portail.
-- Aucun champ interne (temps passé, budget, charge, performance individuelle) n'est sérialisé vers le portail.
+- Aucun champ interne n'est sérialisé vers le portail : **`health_score`** (ADR-025), budget, temps estimé/passé, compteurs de retard, charge, performance individuelle, `created_by`.
+- `app_portal` n'a **aucun droit** sur le schéma `public` — test bloquant.
+- Un contact des organisations A et B ne voit jamais A depuis B (ADR-023).
 - Test à deux navigateurs : le manager envoie, le client valide, le manager est notifié.
 
 ✅ **Sortie** : E2E « le client valide un livrable » + « le client suit son projet ».
@@ -227,7 +235,7 @@ Un lot est terminé quand **tous** ces points sont vrais :
 1. Schéma `project_health_snapshots`, `risks`.
 2. Service `health` (pur) : 8 facteurs, pondérations issues de `organizations.settings`, score 0–100, statut.
 3. **Explication localisée** : `code` + `params` → phrase FR/EN. Testée dans les deux langues.
-4. Composant `HealthScore` (score, statut, facteurs dépliables).
+4. Composant `HealthScore` (score, statut, facteurs dépliables) — **écrans internes uniquement**, jamais dans `(portal)` (ADR-025).
 5. CRUD risques & problèmes (niveau, impact, plan d'action, statut).
 6. Centre d'alertes : retards, validations en attente, projets à risque, objectifs sous la cible.
 7. Job de recalcul (planifié + à l'événement) + historique de santé.
@@ -282,7 +290,8 @@ Un lot est terminé quand **tous** ces points sont vrais :
 ## LOT 15 — Durcissement & mise en production
 1. Audit de sécurité : CSP, en-têtes, limitation de débit, validation MIME, jetons, sessions.
 2. Repasse complète des tests d'isolation et de fuite portail.
-3. Performance : budget de requêtes, index, `EXPLAIN` sur les 10 requêtes les plus lourdes, test de charge avec 50 organisations × 20 projets × 500 actions.
+3. Performance : budget de requêtes, index, `EXPLAIN` sur les 10 requêtes les plus lourdes, test de charge confirmant la cible ADR-022 (100 organisations × 10 projets × 100 actions, ~300 000 `result_metrics`).
+3b. **Portabilité vérifiée** (ADR-021) : l'image Docker démarre sur un second hébergeur, `pg_dump`/`pg_restore` testés, `StorageAdapter` et `MailAdapter` validés sur leurs deux implémentations.
 4. Accessibilité : `axe` sur tous les écrans, parcours clavier complet, lecteur d'écran sur le portail.
 5. Repasse i18n : relecture humaine FR et EN, aucune clé manquante, aucune chaîne en dur.
 6. RGPD : export et suppression des données d'une organisation, politique de conservation.

@@ -26,6 +26,12 @@
 | [ADR-018](#adr-018) | IA reportée en V2 | Proposée |
 | [ADR-019](#adr-019) | Pas de traduction du contenu utilisateur au MVP | Proposée |
 | [ADR-020](#adr-020) | Recherche PostgreSQL native | Proposée |
+| [ADR-021](#adr-021) | Résidence UE + portabilité par adaptateurs | **Acceptée** |
+| [ADR-022](#adr-022) | Volumétrie cible et seuils de bascule | **Acceptée** |
+| [ADR-023](#adr-023) | Contact client multi-comptes et multi-organisations | **Acceptée** |
+| [ADR-024](#adr-024) | Multi-devise sans conversion au MVP | **Acceptée** |
+| [ADR-025](#adr-025) | Le Project Health Score reste interne | **Acceptée** |
+| [ADR-026](#adr-026) | Vues `portal.*` pour l'isolation au niveau colonne | Proposée |
 
 ---
 
@@ -399,17 +405,179 @@ pertinence sémantique → `pg_trgm` couvre les fautes de frappe ; réévaluatio
 
 ---
 
-## Décisions ouvertes (à trancher avec le commanditaire)
+<a id="adr-021"></a>
+## ADR-021 — Résidence des données en UE, portabilité par adaptateurs
+**Statut** : **Acceptée** · 2026-09-14 · *Tranche la question O1*
 
-| # | Sujet | Impact | Bloquant pour |
+**Décision** — Toutes les données résident dans l'Union Européenne pour le MVP. **Et** l'architecture ne
+dépend d'aucun fournisseur ni d'aucune région : une bascule vers l'Afrique de l'Ouest doit être une
+opération d'exploitation, pas une refonte.
+
+**Ce que cela change concrètement** — cinq contraintes, à respecter dès le LOT 0 :
+
+1. **Conteneur, pas plateforme.** Next.js en mode `standalone`, image Docker. L'application doit démarrer identiquement sur Vercel, Scaleway, OVH, Fly.io ou un Kubernetes.
+2. **PostgreSQL standard uniquement.** Aucune extension propriétaire, aucun helper de fournisseur. Notre RLS utilise `current_setting()`, pas `auth.uid()`. Un `pg_dump` suffit à déménager.
+3. **Adaptateurs pour tout ce qui touche l'infrastructure.** `StorageAdapter` (S3 générique, endpoint et région configurables) et `MailAdapter` (**SMTP par défaut**, Resend en option). Chacun a **deux implémentations testées** — c'est la seule preuve qu'une abstraction est réellement portable.
+4. **Node.js uniquement, jamais l'Edge Runtime.** Le middleware reste minimal et compatible Node.
+5. **Aucun SDK d'hébergeur dans `src/modules/`.** Les seuls points de contact avec l'infrastructure sont `src/lib/storage` et `src/lib/mail`. Vérifié par une règle de dépendance en CI.
+
+**Pourquoi c'est une contrainte d'architecture et pas d'exploitation** — la portabilité ne s'ajoute pas
+après coup. Un `put()` de R2 appelé depuis un module, un `auth.uid()` dans une politique RLS, une route
+en Edge Runtime : chacun coûte des semaines à défaire. Le coût de les éviter au LOT 0 est d'environ deux jours.
+
+**Conséquences** — ✅ Le choix de l'hébergeur devient réversible et peut être arrêté juste avant le LOT 15.
+❌ On renonce aux commodités propriétaires (branches de base par PR façon Neon, files de messages intégrées) :
+les bases de prévisualisation sont créées par script depuis un `pg_dump`, les files sont dans PostgreSQL (ADR-007).
+
+---
+
+<a id="adr-022"></a>
+## ADR-022 — Volumétrie cible à 12 mois et seuils de bascule
+**Statut** : **Acceptée** · *Tranche la question O3*
+
+**Décision** — Dimensionner pour ~100 organisations · ~1 000 projets · ~100 000 actions ·
+plusieurs centaines de milliers de résultats et d'événements, **sans** optimisation prématurée,
+et en identifiant à l'avance les seuils où l'architecture devra évoluer.
+
+**Pourquoi cela simplifie le MVP** — 100 000 actions sur une instance PostgreSQL correctement indexée,
+c'est confortable. Donc : **pas de partitionnement, pas de réplique de lecture, pas de Redis, pas de
+moteur de recherche externe** au MVP. Chacun de ces choix aurait ajouté de l'infrastructure et des
+modes de défaillance pour un problème qui n'existe pas encore.
+
+**Les cinq dispositions prises quand même**, parce qu'elles coûtent cher à ajouter après coup :
+`organization_id` partout et en tête des index · pagination par curseur · `activity_events` et
+`result_metrics` conçues en append-only (partitionnables plus tard sans réécriture) ·
+compteurs dénormalisés (ADR-013) · vue matérialisée prévue dès le LOT 7.
+
+**Seuils et réponses** — détaillés dans `docs/architecture.md` §9.0. Aucun ne demande de refonte :
+`activity_events` > 5 M → partitionnement mensuel · > 500 organisations → réplique de lecture ·
+> 50 jobs/s → BullMQ (ADR-007) · organisation « géante » → extraction vers une base dédiée,
+possible précisément parce que `organization_id` est déjà partout.
+
+**Conséquences** — ✅ MVP simple, chemin de croissance connu. ❌ Un test de charge du LOT 15 devra
+confirmer ces hypothèses sur des données réalistes (50 organisations × 20 projets × 500 actions).
+
+---
+
+<a id="adr-023"></a>
+## ADR-023 — Un contact client peut couvrir plusieurs comptes clients et plusieurs organisations
+**Statut** : **Acceptée** · *Tranche la question O7*
+
+**Contexte** — Groupes et holdings : la même personne suit plusieurs filiales, parfois chez plusieurs
+agences utilisatrices de Doomee.
+
+**Décision** — Une personne = **un seul** enregistrement `users`. Le rôle est porté par `memberships`
+(un par organisation), la portée par `client_user_access` (n lignes par organisation).
+`app.client_ids` est une **liste**, jamais une valeur unique. Le portail reçoit un sélecteur d'organisation.
+
+**Pourquoi un seul compte** — dupliquer l'utilisateur par client donnerait autant de mots de passe et de
+préférences de langue que de filiales, et rendrait les notifications incohérentes. Le cahier des charges
+exige une langue **par utilisateur** : il faut donc que l'utilisateur soit unique.
+
+**Le risque, et sa mitigation** — un contact appartenant aux organisations A et B ne doit jamais voir A
+depuis B. `app.client_ids` est recalculé à chaque changement d'organisation et ne contient **que** les
+clients de l'organisation active. Un test d'intégration dédié couvre exactement ce scénario.
+
+**Conséquences** — ✅ Un compte, une identité, cas des groupes couvert nativement.
+❌ L'unicité de `client_contacts` porte sur `(organization_id, client_id, email)` et **jamais** sur
+l'e-mail seul ; le parcours d'invitation doit reconnaître un utilisateur existant plutôt que d'échouer.
+
+---
+
+<a id="adr-024"></a>
+## ADR-024 — Multi-devise : stockage et affichage, pas de conversion
+**Statut** : **Acceptée** · *Tranche la question O2*
+
+**Décision** — Tout montant est un **couple** `numeric(18,2)` + `char(3)` ISO-4217. Affichage via
+`Intl.NumberFormat`. **Aucune conversion, aucun taux de change au MVP.**
+
+**La règle qui compte** — **ne jamais sommer deux devises.** Tout agrégat monétaire est `GROUP BY currency`.
+Un dashboard affiche « 12 000 000 XOF et 4 200 EUR », jamais un total unique. C'est moins élégant, mais
+un total faux dans un rapport envoyé à un client est un incident, pas un défaut d'esthétique.
+Un objectif et ses résultats dans des devises différentes ne produisent **pas** d'écart : l'interface le signale.
+
+**Pourquoi reporter la conversion** — une conversion correcte exige un taux **daté** et une source
+auditable (le taux du jour de la dépense, pas celui du jour de l'affichage). C'est un sujet en soi,
+sans valeur au MVP.
+
+**Ce qui rend la V2 facile** — chaque montant porte déjà sa devise, donc **aucune donnée historique ne
+sera ambiguë**. Il suffira d'ajouter `exchange_rates` et deux colonnes `amount_base` / `rate_used`.
+C'est le seul point qui devait être acquis dès maintenant.
+
+**Conséquences** — ✅ Simple, exact, V2 préparée. ❌ Pas de total consolidé multi-devises : assumé et explicite dans l'interface.
+
+---
+
+<a id="adr-025"></a>
+## ADR-025 — Le Project Health Score reste un outil interne
+**Statut** : **Acceptée** · *Tranche la question O10*
+
+**Décision** — `health_score` et `health_status` ne sont **jamais** exposés au portail client au MVP.
+Le client voit l'avancement (`progress_percent`), les prochaines étapes et ses livrables en attente.
+
+**Pourquoi** — le score agrège des signaux internes : charge d'équipe, actions en retard, validations en
+attente. Une partie de ces signaux met en cause le client lui-même (« 1 validation en attente depuis 3 jours »).
+L'exposer transformerait un outil de pilotage en objet de négociation, et pousserait les managers à
+manipuler le score plutôt qu'à s'en servir. Un indicateur devient politique dès qu'il est vu par la partie évaluée.
+
+**Mise en œuvre** — ce n'est pas un `if` dans l'interface : les colonnes sont **absentes des vues
+`portal.*`** (ADR-026). Elles ne peuvent pas fuiter, même par une erreur de sérialisation.
+
+**Évolution possible** — un indicateur **simplifié et distinct** (`on_track` / `needs_attention`), calculé
+sur les seuls facteurs que le client peut comprendre et influencer, pourra être exposé plus tard.
+Ce sera une **nouvelle colonne**, pas une exposition de celle-ci.
+
+**Conséquences** — ✅ Le score reste un outil de travail honnête. ❌ Le client ne dispose pas d'un signal
+de risque synthétique — compensé par les prochaines étapes et les livrables en attente, qui sont actionnables.
+
+---
+
+<a id="adr-026"></a>
+## ADR-026 — Vues `portal.*` : isolation au niveau colonne
+**Statut** : Proposée
+
+**Contexte** — RLS filtre des **lignes**. Or ADR-025 (santé), le budget, le temps passé et les compteurs
+de retard sont des **colonnes** de tables dont le client doit voir certaines lignes.
+
+**Options**
+1. Filtrer les colonnes dans la couche de requête du portail (liste blanche applicative).
+2. Politiques par colonne — **n'existe pas** en PostgreSQL (seuls les `GRANT` par colonne existent, ingérables ici).
+3. **Vues dédiées `portal.*`** avec `security_invoker = true`, et révocation de tout droit de `app_portal` sur `public`.
+
+**Décision** — Option 3.
+
+**Pourquoi** — l'option 1 repose sur le fait qu'aucun développeur n'oubliera jamais une colonne, sur des
+années. L'option 3 inverse le défaut : ajouter une colonne à une table n'en fait **jamais** une colonne
+visible du client ; il faut un geste explicite dans la vue. `security_invoker = true` (PostgreSQL 15+)
+fait appliquer RLS avec les droits de `app_portal` : la vue **cumule** les deux barrières au lieu de les contourner.
+
+**Conséquences** — ✅ Fuite de colonne structurellement impossible ; revue simplifiée (la vue est la
+spécification de ce que voit le client). ❌ Une quinzaine de vues à maintenir ; ajouter un champ au
+portail demande une migration — **c'est le but**. Test : `app_portal` n'a aucun droit sur le schéma `public`.
+
+---
+
+## Décisions tranchées avec le commanditaire — 2026-09-14
+
+| # | Sujet | Décision | ADR |
 |---|---|---|---|
-| **O1** | **Hébergement et résidence des données** (UE ? Afrique de l'Ouest ?) | Choix de l'hébergeur et de la région | LOT 0 |
-| **O2** | Devise par défaut et multi-devise (FCFA / EUR / USD) — conversion attendue ? | Modèle des montants | LOT 6 |
-| **O3** | Volumétrie cible à 12 mois (organisations, projets, actions) | Dimensionnement, stratégie d'index | LOT 1 |
+| **O1** | Hébergement et résidence des données | **Union Européenne** pour le MVP, architecture portable sans dépendance à un fournisseur ni à une région (Afrique de l'Ouest possible plus tard) | [ADR-021](#adr-021) |
+| **O2** | Multi-devise | **Stockage et affichage seuls**, pas de conversion ni de taux de change ; architecture préparée pour l'ajouter | [ADR-024](#adr-024) |
+| **O3** | Volumétrie à 12 mois | 100 organisations · 1 000 projets · 100 000 actions · plusieurs centaines de milliers de résultats et d'événements ; évolutif au-delà sans refonte | [ADR-022](#adr-022) |
+| **O7** | Contact client multi-comptes | **Oui** — un contact peut couvrir plusieurs comptes clients et plusieurs organisations (groupes, holdings) ; prévu dans le modèle dès le départ | [ADR-023](#adr-023) |
+| **O10** | Health Score visible du client | **Non** au MVP — outil interne de pilotage ; un indicateur simplifié distinct pourra être exposé plus tard | [ADR-025](#adr-025) |
+
+---
+
+## Décisions ouvertes — à traiter dans leur lot
+
+| # | Sujet | Impact | À trancher avant |
+|---|---|---|---|
 | **O4** | Export Excel/CSV reporté en V2 — acceptable ? | Périmètre du LOT 12 | LOT 12 |
 | **O5** | Rôle `owner` (ADR-012) — validé ? | Matrice de permissions | LOT 1 |
-| **O6** | Gamification : activée par défaut ? désactivable par organisation ? | LOT 14 | LOT 14 |
-| **O7** | Un contact client peut-il voir **plusieurs** comptes clients (groupe, holding) ? | Modèle `client_user_access` | LOT 1 |
+| **O6** | Gamification : activée par défaut ? désactivable par organisation ? | Paramètres d'organisation | LOT 14 |
 | **O8** | Rétention des données après résiliation d'un abonnement | RGPD, purge | LOT 15 |
 | **O9** | Le client peut-il commenter une **action**, ou seulement un livrable et un rapport ? | Portée du portail | LOT 9 |
-| **O10** | Le score de santé doit-il être visible du client ? | Politique de visibilité | LOT 11 |
+
+> ⚠️ **O5 concerne le LOT 1** : si le rôle `owner` était refusé, la matrice de permissions et le schéma
+> `memberships` changeraient. Question à confirmer avant de démarrer le LOT 1.

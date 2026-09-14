@@ -455,7 +455,7 @@ Ces 15 critères sont implémentés comme **scénarios Playwright**, exécutés 
 | E2 | Messagerie client | Fils de commentaires partagés, pas de chat temps réel | ⬜ |
 | E3 | Suivi du temps | Champs manuels au MVP, pas de timer | ⬜ |
 | E4 | Rôle `owner` | Ajouté à côté de `direction` | ⬜ |
-| E5 | Devise | Multi-devise par organisation (FCFA, EUR, USD) — pas de conversion au MVP | ⬜ |
+| E5 | Devise | Multi-devise par organisation (FCFA, EUR, USD) — pas de conversion au MVP | ✅ **validé** (ADR-024) |
 | E6 | Gamification | Activable/désactivable par organisation | ⬜ |
 | E7 | Contenu utilisateur bilingue | Non traduit au MVP (seuls l'UI et la structure des rapports le sont) | ⬜ |
-| E8 | Hébergement / résidence des données | À arbitrer selon la localisation des clients (UE / Afrique de l'Ouest) | ⬜ |
+| E8 | Hébergement / résidence des données | **Union Européenne** au MVP ; architecture portable, bascule possible vers l'Afrique de l'Ouest sans refonte | ✅ **validé** (ADR-021) |

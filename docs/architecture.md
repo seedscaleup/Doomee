@@ -71,9 +71,9 @@
 | Graphiques | **Recharts** | Suffisant, léger, thématisable |
 | Tableaux | **TanStack Table** | Tri/filtre/virtualisation pour les listes d'actions et de résultats |
 | Jobs | **pg-boss** (files dans PostgreSQL) | Pas d'infrastructure supplémentaire ; transactionnel avec la donnée métier. Voir ADR-007 |
-| Fichiers | **Cloudflare R2** (API S3) via URL pré-signées | Coût de sortie nul, compatible S3 |
+| Fichiers | **Stockage objet S3-compatible** derrière `StorageAdapter` (Scaleway Object Storage `fr-par` au MVP) | Endpoint et région configurables — aucune dépendance à un fournisseur (ADR-021) |
 | PDF | **@react-pdf/renderer** dans un worker | Rendu déterministe, pas de navigateur headless en serverless |
-| E-mail | **Resend** + **React Email** | Gabarits FR/EN typés |
+| E-mail | **React Email** + `MailAdapter` (SMTP par défaut, Resend en option) | Le SMTP garantit la portabilité vers n'importe quel fournisseur UE (ADR-021) |
 | Observabilité | **Sentry** + logs JSON structurés (pino) | |
 | Analytics produit | PostHog (auto-hébergeable) | Mesure de l'adoption de la boucle de valeur |
 
@@ -293,6 +293,11 @@ Le portail client tourne sur un **pool de connexions distinct** avec un rôle di
 Cela signifie qu'une faille applicative dans le portail (oubli d'un filtre, injection de paramètre)
 **ne peut pas** exposer une note interne : la base refuse de la renvoyer.
 
+RLS filtre des **lignes**. Pour filtrer aussi les **colonnes**, le portail ne lit aucune table
+directement : il lit des vues du schéma `portal` déclarées `security_invoker = true`, à liste de
+colonnes explicite (ADR-026, `docs/database.md` §13.1). C'est ce qui rend `health_score`,
+`budget_amount` ou `spent_minutes` structurellement inatteignables depuis un compte client.
+
 ```sql
 -- Exemple : politique sur les actions
 CREATE POLICY tenant_isolation ON actions FOR ALL TO app_user
@@ -361,7 +366,8 @@ L'URL reste `/[locale]/app/...` — l'`organization_id` n'est jamais un paramèt
 │  │   ├─ matrice rôle → permission (statique, typée, testée)     │ │
 │  │   └─ portée : membre du projet ? client rattaché ?           │ │
 │  │  ┌─ 3. ISOLATION ── RLS PostgreSQL (dernier rempart) ─────┐  │ │
-│  │  │   La base refuse, même si les couches 1-2 sont buguées │  │ │
+│  │  │   Lignes : la base refuse, même si 1-2 sont buguées     │  │ │
+│  │  │   Colonnes : vues `portal.*` security_invoker (ADR-026) │  │ │
 │  │  └────────────────────────────────────────────────────────┘  │ │
 │  └──────────────────────────────────────────────────────────────┘ │
 └───────────────────────────────────────────────────────────────────┘
@@ -459,6 +465,33 @@ Règle : **si un motif visuel apparaît une troisième fois, il devient un compo
 ---
 
 ## 9. Performance
+
+### 9.0. Volumétrie cible à 12 mois *(validée — ADR-022)*
+
+| Entité | Volume | Conséquence de conception |
+|---|---|---|
+| Organisations | ~100 | Table partagée + RLS parfaitement dimensionnée (ADR-004) |
+| Projets | ~1 000 | ~10 projets par organisation — les listes tiennent en une page |
+| Actions | ~100 000 | ~100 par projet — index `(organization_id, …)` suffisants, pas de partitionnement |
+| Résultats + `result_metrics` | ~300 000 – 1 M | La vue matérialisée `result_metrics_daily` devient utile dès ~200 k lignes |
+| `activity_events` | ~1 M | Table la plus volumineuse — **partitionnement par mois prévu mais pas activé au MVP** |
+| Fichiers | ~100 Go | Stockage objet, jamais en base |
+
+Ces volumes tiennent **très largement** sur une instance PostgreSQL unique (4 vCPU / 16 Go).
+Les points de bascule sont identifiés à l'avance pour qu'aucun ne demande de refonte :
+
+| Seuil | Déclencheur | Action, sans refonte |
+|---|---|---|
+| `activity_events` > 5 M | volume | Partitionnement déclaratif par mois (`PARTITION BY RANGE (created_at)`) |
+| `result_metrics` > 5 M | volume | Partitionnement par année + agrégats pré-calculés |
+| > 500 organisations | croissance | Réplique en lecture pour les dashboards et le reporting |
+| > 50 jobs/s | usage | Migration de pg-boss vers BullMQ + Redis (ADR-007) |
+| Une organisation « géante » | client grand compte | Extraction de son schéma vers une base dédiée — **possible car `organization_id` est déjà partout** |
+
+> Aucune de ces évolutions ne touche le modèle de données ni la couche d'accès : c'est le sens
+> de la contrainte « `organization_id` sur toutes les tables, index toujours préfixés par lui ».
+
+### 9.1. Règles permanentes
 
 | Sujet | Mesure |
 |---|---|
@@ -564,15 +597,42 @@ Toutes les étapes sont bloquantes sur `main`.
 
 ## 13. Déploiement et environnements
 
-| Env | Usage | Base |
+### 13.1. Résidence des données — **Union Européenne** *(validé — ADR-021)*
+
+Toutes les données (base, fichiers, sauvegardes, logs, e-mails sortants) résident dans l'Union Européenne.
+**Mais l'architecture ne doit dépendre d'aucun fournisseur ni d'aucune région.** Une bascule vers
+l'Afrique de l'Ouest (ou toute autre région) doit être une opération d'exploitation, pas une refonte.
+
+### 13.2. Ce qui garantit la portabilité
+
+| Brique | Règle de portabilité | Conséquence concrète |
 |---|---|---|
-| `local` | Développement | PostgreSQL Docker + seed de démo |
-| `preview` | Une base éphémère par PR | Branche Neon |
-| `staging` | Recette, données anonymisées | Instance dédiée |
-| `production` | — | Instance dédiée, sauvegardes PITR |
+| **Application** | Next.js en mode `standalone`, livré en **image Docker** | Tourne sur Vercel, Scaleway, OVH, Clever Cloud, Fly.io, Hetzner, ou un Kubernetes — sans changer une ligne |
+| **Base** | **PostgreSQL 16 standard**. Aucune extension propriétaire, aucun helper de fournisseur (pas de `auth.uid()` à la Supabase), uniquement `current_setting()` | Un `pg_dump` / `pg_restore` suffit à déménager |
+| **Fichiers** | Interface `StorageAdapter` ; implémentation S3 générique (`@aws-sdk/client-s3`) avec **endpoint et région configurables** | Scaleway, OVH, Cloudflare R2, MinIO auto-hébergé — même code |
+| **E-mail** | Interface `MailAdapter` ; **SMTP par défaut**, Resend en implémentation alternative | Tout fournisseur d'envoi, y compris un relais local |
+| **Jobs** | pg-boss, dans la même base | Suit la base, rien à migrer |
+| **Auth** | Better Auth, sessions dans **notre** base | Aucune identité chez un tiers (ADR-003) |
+| **Runtime** | **Node.js uniquement**, jamais l'Edge Runtime ; middleware minimal | Pas de dépendance à l'infrastructure de périphérie d'un hébergeur |
+| **Secrets** | Variables d'environnement validées par Zod au démarrage | Pas de gestionnaire de secrets propriétaire |
+| **Observabilité** | Sentry (région UE) + logs JSON sur la sortie standard | Les logs sont récupérables par n'importe quel collecteur |
 
-Hébergement proposé : **Vercel** (application) + **Neon** ou **Supabase** (PostgreSQL, branches, PITR) + **Cloudflare R2** (fichiers).
-Les jobs tournent sur un worker Node dédié (Railway / Fly.io) et non en serverless, pour les tâches longues (PDF, recalculs).
+**Règle inscrite dans `CLAUDE.md`** : aucun SDK spécifique à un hébergeur n'entre dans `src/modules/`.
+Les seuls points de contact avec l'infrastructure sont `src/lib/storage` et `src/lib/mail`, tous deux
+derrière une interface, tous deux avec au moins deux implémentations testées.
 
-> ⚠️ **À arbitrer** : la résidence des données. Si les clients sont en Afrique de l'Ouest ou soumis à une contrainte
-> de localisation UE, le choix de région conditionne l'hébergeur. Voir E8 du cahier des charges.
+### 13.3. Environnements
+
+| Env | Usage | Base | Fichiers |
+|---|---|---|---|
+| `local` | Développement | PostgreSQL 16 en Docker + seed de démo | MinIO en Docker |
+| `ci` | Tests | Testcontainers (jetable) | MinIO en conteneur |
+| `staging` | Recette, données anonymisées | Instance UE dédiée | Bucket UE dédié |
+| `production` | — | Instance UE dédiée, PITR, chiffrement au repos | Bucket UE, versionné |
+
+**Proposition d'hébergement MVP (UE, faiblement couplé)** : application en conteneur (Scaleway Serverless
+Containers `fr-par` ou Vercel région `cdg1`) · PostgreSQL managé UE · Object Storage S3 `fr-par` ·
+worker de jobs sur un conteneur Node dédié (jamais en serverless : PDF et recalculs sont longs).
+
+> Le choix exact de l'hébergeur est **réversible par construction** et peut être arrêté au dernier moment,
+> juste avant le LOT 15. Aucun lot antérieur n'en dépend.

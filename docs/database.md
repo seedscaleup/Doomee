@@ -17,7 +17,8 @@
 | **Tenant** | `organization_id uuid NOT NULL` sur **toutes** les tables applicatives, même redondant |
 | **FK intra-tenant** | **Composites** : `(organization_id, parent_id) → parents(organization_id, id)` |
 | Index | Toujours préfixés par `organization_id` |
-| Argent | `numeric(18,2)` + colonne `currency char(3)`. Jamais de `float` |
+| Argent | `numeric(18,2)` + colonne `currency char(3)` obligatoire. Jamais de `float` |
+| **Agrégats monétaires** | **Ne jamais sommer deux devises.** Tout agrégat monétaire est `GROUP BY currency` (ADR-024) |
 | Métriques | `numeric(20,4)` (supporte ratios, pourcentages et gros volumes) |
 | Libellés métier | `labels jsonb` → `{ "fr": "…", "en": "…" }` |
 | Enums d'état | Types `enum` PostgreSQL (machine à états = code) |
@@ -151,11 +152,28 @@ CREATE TYPE field_kind       AS ENUM ('number','percent','currency','text','long
 `job_title text` · `invited_by` · `joined_at` · `deactivated_at`
 **UNIQUE (organization_id, user_id)** · **UNIQUE (organization_id, id)** *(cible des FK composites)*
 
-### `client_user_access`
+### `client_user_access` — contacts clients multi-comptes *(validé — ADR-023)*
 Rattache un utilisateur de rôle `client` aux comptes clients qu'il peut voir.
 `id` · `organization_id` · `user_id` · `client_id` · `granted_by` · `created_at`
 **UNIQUE (organization_id, user_id, client_id)**
 → alimente `app.client_ids` dans le contexte RLS du portail.
+
+**Un même contact peut couvrir plusieurs comptes clients ET plusieurs organisations** — cas des groupes et holdings :
+
+```
+users (1 personne, 1 e-mail)
+  ├─ memberships (org A, role='client')  ─┬─ client_user_access → client « Filiale 1 »
+  │                                       └─ client_user_access → client « Filiale 2 »
+  └─ memberships (org B, role='client')  ─── client_user_access → client « Groupe X »
+```
+
+| Règle | Détail |
+|---|---|
+| Une personne = **une** ligne `users` | Un seul compte, un seul mot de passe, une seule préférence de langue |
+| Un rôle **par organisation** | `memberships` porte le rôle ; la même personne peut être `client` chez A et `collaborator` chez B |
+| Plusieurs clients **dans** une organisation | Plusieurs lignes `client_user_access` → `app.client_ids` est une **liste** |
+| Changement d'organisation | Sélecteur d'organisation dans le portail, comme côté interne ; la session régénère `app.organization_id` **et** `app.client_ids` |
+| Aucune fuite entre comptes | `app.client_ids` ne contient **que** les clients de l'organisation active. Testé : un contact des orgs A et B ne voit jamais A depuis B |
 
 ### `invitations`
 `id` · `organization_id` · `email` · `role` · `client_id` (si rôle `client`) · `token_hash` ·
@@ -232,7 +250,10 @@ Les métriques calculées sont dérivées **à la lecture** par le service `metr
 ### `client_contacts`
 `id` · `organization_id` · `client_id` · `name` · `email` · `phone` · `job_title` ·
 `is_primary boolean` *(le « responsable côté client »)* · `user_id` FK NULL *(si invité au portail)*
-**FK composite (organization_id, client_id)**
+**FK composite (organization_id, client_id)** · **UNIQUE (organization_id, client_id, email)**
+
+> ⚠️ L'unicité porte sur **(client, e-mail)**, jamais sur l'e-mail seul : la même personne est un contact
+> légitime de plusieurs clients (ADR-023). `user_id` pointe vers le **même** enregistrement `users` dans tous les cas.
 
 ### `projects`
 | Colonne | Type | Notes |
@@ -646,6 +667,36 @@ CREATE POLICY tenant_all ON <t> FOR ALL TO app_user
 `organization_id` correspondant **ET** `is_client_visible = true` **ET** appartenance à un projet
 d'un client listé dans `app.client_ids`.
 
+### 13.1. Schéma `portal` — isolation au niveau **colonne** *(ADR-026)*
+
+RLS filtre des **lignes**, pas des **colonnes**. Or certaines colonnes ne doivent jamais atteindre le client :
+`health_score`, `health_status` (décision Q10 — la santé projet est un outil **interne**, ADR-025),
+`budget_amount`, `spent_minutes`, `estimated_minutes`, `blocked_reason`, `account_team_note`, `open_risks_count`.
+
+Le portail ne lit donc **aucune table directement** : il lit des vues à liste de colonnes explicite.
+
+```sql
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM app_portal;
+
+CREATE VIEW portal.projects WITH (security_invoker = true) AS
+  SELECT id, organization_id, client_id, name, description, status, color,
+         start_date, end_date, progress_percent
+    FROM public.projects;                 -- ni health_score, ni budget, ni compteurs internes
+
+GRANT SELECT ON portal.projects TO app_portal;
+```
+
+`security_invoker = true` (PostgreSQL 15+) fait appliquer les politiques RLS **avec les droits de `app_portal`** :
+les deux barrières se cumulent, la vue ne les contourne pas.
+
+**Conséquence** : ajouter une colonne à une table n'en fait **jamais** une colonne visible du client.
+Il faut un geste explicite dans la vue. Un test vérifie que `app_portal` n'a aucun droit sur `public`.
+
+**Colonnes interdites au portail, en toutes circonstances** :
+`health_score` · `health_status` · `budget_amount` · `budget_currency` · `estimated_minutes` ·
+`spent_minutes` · `blocked_reason` · `account_team_note` · `open_risks_count` · `actions_overdue` ·
+`created_by` / `updated_by` (identité interne) · `settings` · tout champ de `memberships`.
+
 Écritures autorisées au portail, et **uniquement** celles-ci :
 `deliverable_reviews` (approbation / demande de modification), `comments` avec `visibility='shared'`,
 `notifications` (marquage lu), `users` (ses propres préférences).
@@ -706,3 +757,44 @@ Livrées à l'installation, `organization_id = NULL`, libellés FR **et** EN :
 - **Pondérations santé** : progress 0.25 · deadlines 0.25 · overdue 0.20 · validations 0.10 · risks 0.10 · workload 0.10
 
 > Une organisation peut désactiver un élément système et créer les siens. **Rien de tout cela n'est écrit dans le code.**
+
+
+---
+
+## 16. Multi-devise *(validé — ADR-024)*
+
+**MVP : stockage et affichage uniquement. Aucune conversion, aucun taux de change.**
+
+| Règle | Détail |
+|---|---|
+| Tout montant est un **couple** | `numeric(18,2)` + `char(3)` ISO-4217. Jamais un montant nu |
+| Colonnes concernées | `projects.budget_amount/currency` · `objectives.target_value/currency` · `result_metrics.value/currency` · `organizations.default_currency` |
+| Devise par défaut | `organizations.default_currency` (`XOF`, `EUR`, `USD`…) — pré-remplit les formulaires, ne contraint rien |
+| **Interdiction absolue** | Ne **jamais** sommer deux devises. Tout agrégat monétaire est `GROUP BY currency` |
+| Affichage | `Intl.NumberFormat(locale, { style:'currency', currency })` — la locale décide du **format**, la donnée décide de la **devise** |
+| Objectifs | L'écart n'est calculé que si objectif et résultats partagent la devise ; sinon l'interface le signale au lieu d'afficher un chiffre faux |
+| Rapports | Une section de résultats monétaires affiche une ligne par devise |
+
+**Préparation de la V2 (conversion)** — rien à construire maintenant, mais le modèle le permet déjà :
+une table `exchange_rates (base_currency, quote_currency, rate numeric(18,8), valid_on date, source)`
+et deux colonnes optionnelles `amount_base` / `rate_used` sur les lignes monétaires suffiront.
+**Le point important est acquis dès le MVP** : chaque montant porte sa devise, donc aucune donnée
+historique ne sera ambiguë le jour où la conversion arrivera.
+
+---
+
+## 17. Volumétrie et montée en charge *(validé — ADR-022)*
+
+Cible à 12 mois : ~100 organisations · ~1 000 projets · ~100 000 actions ·
+plusieurs centaines de milliers de résultats et d'événements.
+
+Ces volumes sont **confortables** pour une instance PostgreSQL unique. Les seuils de bascule et les
+actions correspondantes — toutes sans refonte du modèle — sont détaillés dans `docs/architecture.md` §9.0.
+
+Dispositions prises **dès le MVP** parce qu'elles coûtent cher à ajouter après coup :
+
+1. `organization_id` sur toutes les tables et en tête de tous les index → extraction d'une organisation vers une base dédiée possible à tout moment.
+2. Pagination **par curseur** partout (`(created_at, id)`), jamais `OFFSET`.
+3. `activity_events` et `result_metrics` conçues comme des tables **append-only**, sans `UPDATE` → partitionnement déclaratif ajoutable plus tard sans réécriture applicative.
+4. Compteurs dénormalisés sur `projects` (ADR-013) → les listes ne dépendent pas du volume d'actions.
+5. Vue matérialisée `result_metrics_daily` prévue dès le LOT 7, activée dès que la table dépasse ~200 000 lignes.

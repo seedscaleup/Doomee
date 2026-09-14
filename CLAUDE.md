@@ -29,9 +29,11 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | LOT 0 — socle technique (voir `docs/roadmap.md`) |
+| **Phase actuelle** | **LOT 0 — socle technique** (voir `docs/roadmap.md`) |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | Documents d'architecture produits, **en attente de validation** |
+| **Dernier jalon** | Architecture validée · décisions O1, O2, O3, O7, O10 tranchées (ADR-021 à ADR-026) |
+| **Prochaine étape** | LOT 0 — ne pas démarrer le LOT 1 avant que le LOT 0 soit terminé et vérifié |
+| **Question à lever avant le LOT 1** | **O5** — le rôle `owner` (ADR-012) est-il validé ? Il conditionne la matrice de permissions |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
 > suivante de reprendre sans perdre le contexte.
@@ -41,7 +43,7 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 ## 3. Les 12 règles non négociables
 
 1. 🔒 **Aucune requête ne franchit la frontière `organization_id`.** Tout passe par `withTenant()`. Le client de base brut n'est jamais exporté ni importé ailleurs.
-2. 🔒 **Le client ne voit jamais l'interne.** Le portail utilise le rôle PostgreSQL `app_portal`. `is_client_visible` est en **opt-in** (défaut `false`), `comments.visibility` vaut `'internal'` par défaut.
+2. 🔒 **Le client ne voit jamais l'interne.** Le portail utilise le rôle PostgreSQL `app_portal` et ne lit **que** les vues `portal.*` à colonnes explicites (ADR-026). `is_client_visible` est en **opt-in** (défaut `false`), `comments.visibility` vaut `'internal'` par défaut. **Le Health Score n'est jamais exposé au client** (ADR-025).
 3. 🔒 **On ne contourne jamais un contrôle de sécurité pour avancer plus vite.** Pas de `BYPASSRLS`, pas de `// TODO: sécuriser plus tard`, pas de requête « juste pour déboguer » qui reste.
 4. **Toute écriture passe par `defineAction`**, toute lecture par `defineQuery`. Aucun autre chemin.
 5. **TypeScript `strict`.** Pas de `any`, pas de `@ts-ignore`, pas de `as` sauf après un `satisfies` ou une validation Zod.
@@ -52,6 +54,8 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 10. **Less typing.** Chaque champ ajouté à un formulaire doit être justifié. Pré-remplir tout ce qui peut l'être.
 11. **Une PR qui touche au schéma touche aux tests d'isolation.** Sinon elle est refusée.
 12. **Un lot ne démarre pas si le précédent n'est pas « terminé »** au sens de `docs/roadmap.md` §1.
+13. 🌍 **Aucune dépendance à un hébergeur.** Node.js uniquement (jamais l'Edge Runtime), PostgreSQL standard, et **aucun SDK d'infrastructure hors `src/lib/storage` et `src/lib/mail`** — chacun avec deux implémentations testées (ADR-021).
+14. 💱 **Tout montant porte sa devise.** Ne **jamais** sommer deux devises : tout agrégat monétaire est `GROUP BY currency` (ADR-024).
 
 ---
 
@@ -63,10 +67,14 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 | PostgreSQL 16 + **RLS** · **Drizzle ORM** + drizzle-kit | ADR-002, ADR-004 |
 | **Better Auth** (auto-hébergé) | ADR-003 |
 | Tailwind v4 + shadcn/ui · next-intl · React Hook Form + Zod | |
-| pg-boss (jobs) · Cloudflare R2 (fichiers) · Resend + React Email · @react-pdf/renderer | ADR-007, ADR-015 |
+| pg-boss (jobs) · `StorageAdapter` S3-compatible · `MailAdapter` (SMTP par défaut) + React Email · @react-pdf/renderer | ADR-007, ADR-015, ADR-021 |
 | Vitest + Testcontainers · Playwright · Biome · Lefthook · pnpm | |
 
-**On n'utilise pas** : tRPC/GraphQL, Redux/Zustand global, Redis (au MVP), microservices, ORM masquant le SQL.
+**On n'utilise pas** : tRPC/GraphQL, Redux/Zustand global, Redis (au MVP), microservices, ORM masquant le SQL,
+**Edge Runtime**, ni aucune API propriétaire d'hébergeur.
+
+**Hébergement** : Union Européenne, en conteneur Docker (`output: 'standalone'`). Le choix de l'hébergeur
+est **réversible par construction** et n'est arrêté qu'au LOT 15 (ADR-021).
 
 ---
 
@@ -97,7 +105,8 @@ Un module n'importe un autre module **que par son `index.ts`**.
 ```
 1. AUTHENTIFICATION   session valide ?                        (Better Auth)
 2. AUTORISATION       rôle + portée                            (can(), PERMISSIONS, project_members, client_user_access)
-3. ISOLATION          la base refuse si 1 et 2 sont buguées    (RLS, app_user / app_portal)
+3. ISOLATION          lignes   : la base refuse si 1 et 2 sont buguées   (RLS, app_user / app_portal)
+                      colonnes : vues portal.* security_invoker          (ADR-026)
 ```
 
 - La matrice `PERMISSIONS` est une **donnée typée**, pas des `if (role === 'manager')` dispersés.
@@ -119,6 +128,9 @@ Un module n'importe un autre module **que par son `index.ts`**.
 | `timestamptz` UTC · `deleted_at` (suppression logique) · `created_by` / `updated_by` | |
 | Argent : `numeric(18,2)` + `currency char(3)`. Métriques : `numeric(20,4)`. **Jamais de float** | |
 | **Enum** = machine à états (code) · **Table de référence** = classification (donnée) | ADR-010 |
+| Tout montant = `numeric(18,2)` + `currency char(3)`. **Agrégat monétaire toujours `GROUP BY currency`** | ADR-024 |
+| Pagination **par curseur** `(created_at, id)`, jamais `OFFSET` | ADR-022 |
+| `activity_events` et `result_metrics` sont **append-only** (partitionnables plus tard) | ADR-022 |
 | Toute nouvelle table : `ENABLE` **et** `FORCE ROW LEVEL SECURITY` + politique + test d'isolation | |
 
 **Migrations** : générées par `drizzle-kit`, **relues à la main**, politiques RLS ajoutées manuellement.
@@ -221,6 +233,12 @@ pnpm ci               # tout, dans l'ordre de la CI
 | ❌ Régénérer un rapport publié depuis les tables vivantes | → lire le snapshot (ADR-014) |
 | ❌ Un navigateur headless pour le PDF | → `@react-pdf/renderer` en job (ADR-015) |
 | ❌ Calculer « en retard » sans fuseau horaire | → service pur, fuseau du projet (R9) |
+| ❌ Sommer des montants de devises différentes | → `GROUP BY currency` (ADR-024) |
+| ❌ Exposer `health_score` au portail client | → outil **interne** (ADR-025) ; absent des vues `portal.*` |
+| ❌ Ajouter une colonne et croire qu'elle reste interne | → elle l'est **par défaut** ; l'exposer demande un geste dans la vue `portal.*` (ADR-026) |
+| ❌ Importer un SDK d'hébergeur dans un module | → `src/lib/storage` ou `src/lib/mail`, derrière une interface (ADR-021) |
+| ❌ `UNIQUE` sur l'e-mail d'un contact client | → un contact couvre plusieurs clients et plusieurs organisations (ADR-023) |
+| ❌ Une route en Edge Runtime | → Node.js uniquement, sinon la portabilité est perdue (ADR-021) |
 | ❌ Commencer l'IA, les intégrations ou le suivi du temps | → **V2** (ADR-018) |
 
 ---
@@ -233,6 +251,22 @@ synchronisation calendrier · Slack/WhatsApp · export Excel/CSV · chat temps r
 sous-tâches, dépendances, Gantt · paiement en ligne · SSO/SAML · application native.
 
 **Si une demande relève de cette liste : le signaler, ne pas l'implémenter sans validation explicite.**
+
+---
+
+## 14 bis. Décisions du commanditaire — tranchées le 2026-09-14
+
+| Sujet | Décision | Détail |
+|---|---|---|
+| **Résidence des données** | **Union Européenne** au MVP, architecture **portable** sans dépendance fournisseur ni région (Afrique de l'Ouest possible plus tard) | ADR-021 |
+| **Volumétrie 12 mois** | 100 organisations · 1 000 projets · 100 000 actions · centaines de milliers de résultats et d'événements ; évolutif sans refonte | ADR-022 |
+| **Contact client multi-comptes** | **Oui** — plusieurs comptes clients **et** plusieurs organisations (groupes, holdings), prévu dès le modèle | ADR-023 |
+| **Multi-devise** | Stockage et affichage seuls ; **pas de conversion** au MVP, architecture prête pour l'ajouter | ADR-024 |
+| **Health Score côté client** | **Non** — outil interne ; un indicateur simplifié distinct pourra être exposé plus tard | ADR-025 |
+
+Restent ouvertes, à traiter dans leur lot : **O4** (export Excel/CSV) · **O5** (rôle `owner`, à lever
+**avant le LOT 1**) · **O6** (gamification) · **O8** (rétention après résiliation) · **O9** (commentaire
+client sur une action). Voir `docs/decisions.md`.
 
 ---
 
