@@ -29,10 +29,10 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | **LOT 0 terminé et vérifié** — `pnpm verify` vert de bout en bout |
+| **Phase actuelle** | **LOT 1 terminé et vérifié** — `pnpm verify` vert (353 unitaires · 49 intégration · 50 E2E) |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | Socle technique livré : Next.js 15 · Tailwind v4 · Drizzle · next-intl FR/EN · Vitest + Testcontainers · Playwright · Biome · CI · image Docker vérifiée |
-| **Prochaine étape** | **LOT 1 — tenancy, authentification, RLS.** Aucune décision ouverte ne le bloque |
+| **Dernier jalon** | Tenancy, RLS, authentification, invitations, sélecteur d'organisation, préférences FR/EN |
+| **Prochaine étape** | **LOT 2 — design system et shell applicatif** |
 | **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md` |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
@@ -96,6 +96,10 @@ src/server/     defineAction / defineQuery / context — le portail d'accès obl
 
 **Dépendances** : `app → modules → db|lib`. Jamais l'inverse.
 Un module n'importe un autre module **que par son `index.ts`**.
+
+⚠️ **`index.ts` est une entrée SERVEUR** (ADR-030). Un composant **client** importe le fichier précis :
+`mutations.ts` (`'use server'`) ou `service.ts` (pur). Toute surface serveur porte `import 'server-only'`,
+donc un import client fautif échoue au build au lieu de casser le bundle en silence.
 `service.ts` est pur : pas de `db`, pas de `headers()`, pas de `fetch`. Testable sans infrastructure.
 
 ---
@@ -244,6 +248,11 @@ pnpm verify           # tout, dans l'ordre de la CI
 | ❌ Importer un SDK d'hébergeur dans un module | → `src/lib/storage` ou `src/lib/mail`, derrière une interface (ADR-021) |
 | ❌ `UNIQUE` sur l'e-mail d'un contact client | → un contact couvre plusieurs clients et plusieurs organisations (ADR-023) |
 | ❌ Une route en Edge Runtime | → Node.js uniquement, sinon la portabilité est perdue (ADR-021) |
+| ❌ Un composant client qui importe le barrel d'un module | → importer `mutations.ts` ou `service.ts` (ADR-030) |
+| ❌ Membre `INHERIT` de `app_user` et `app_portal` | → `NOINHERIT`, sinon union des politiques RLS (ADR-029) |
+| ❌ Une page qui appelle `requireSession()` directement | → `requirePageSession(locale)` : layout et page rendent en parallèle |
+| ❌ Un fichier de test jetable à la racine du projet | → il casse `next build`, qui typecheck tout le dépôt |
+| ❌ `getByRole('alert')` nu dans un test E2E | → Next ajoute son propre annonceur de route ; scoper via `formAlert()` |
 | ❌ Commencer l'IA, les intégrations ou le suivi du temps | → **V2** (ADR-018) |
 
 ---

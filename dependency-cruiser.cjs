@@ -39,9 +39,12 @@ module.exports = {
       comment: 'Hosting SDKs stay behind src/lib/storage and src/lib/mail (ADR-021).',
       severity: 'error',
       from: { pathNot: '^src/lib/(storage|mail)' },
+      // Match the RESOLVED path: an npm module resolves under node_modules
+      // (under node_modules/.pnpm/... with pnpm), never to its bare name.
+      // Matching the bare name silently never fires — a guard worse than none.
       to: {
         dependencyTypes: ['npm'],
-        path: '^(@aws-sdk|@vercel|resend|nodemailer|@supabase|@neondatabase)',
+        path: 'node_modules/(@aws-sdk|@vercel|resend|nodemailer|@supabase|@neondatabase)/',
       },
     },
     {

@@ -11,8 +11,9 @@ export const NON_TENANT_TABLES = new Map<string, string>([
   ['sessions', 'Identity, revoked from app_user entirely'],
   ['accounts', 'Identity and credential hashes, revoked from app_user entirely'],
   ['verifications', 'Identity, revoked from app_user entirely'],
+  ['rate_limits', 'Auth rate-limit counters, tenant-less, revoked from app_user'],
   ['schema_migrations', 'Migration bookkeeping, not application data'],
 ])
 
 /** Identity tables the application role must not be able to touch at all. */
-export const IDENTITY_TABLES = ['sessions', 'accounts', 'verifications']
+export const IDENTITY_TABLES = ['sessions', 'accounts', 'verifications', 'rate_limits']

@@ -40,11 +40,13 @@ describe('database harness', () => {
     const { rows } = await client.query<{ filename: string }>(
       'SELECT filename FROM schema_migrations ORDER BY filename',
     )
-    expect(rows.map((row) => row.filename)).toEqual([
-      '0000_extensions.sql',
-      '0001_tenancy.sql',
-      '0002_rls_policies.sql',
-    ])
+    // Order matters: extensions, then tables, then policies. A migration that
+    // sorted before the extensions would fail on the citext column type.
+    const applied = rows.map((row) => row.filename)
+    expect(applied[0]).toBe('0000_extensions.sql')
+    expect(applied).toContain('0001_tenancy.sql')
+    expect(applied).toContain('0002_rls_policies.sql')
+    expect(applied).toEqual([...applied].sort())
   })
 
   it('is idempotent: re-running applies nothing', async () => {

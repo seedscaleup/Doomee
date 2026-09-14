@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { magicLink } from 'better-auth/plugins'
@@ -5,7 +7,16 @@ import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
 import { uuidv7 } from 'uuidv7'
 import * as schema from '@/db/schema'
+import { isLocale, type Locale } from '@/i18n/routing'
 import { serverEnv } from '@/lib/env'
+import { mailer } from '@/lib/mail'
+import { renderMail, type TemplateName } from '@/lib/mail/templates'
+import {
+  AUTH_RATE_LIMIT_RULES,
+  RATE_LIMIT_MAX_REQUESTS,
+  RATE_LIMIT_WINDOW_SECONDS,
+  rateLimitEnabled,
+} from './rate-limit'
 
 /**
  * Authentication (ADR-003). Identities and sessions live in OUR database, so
@@ -38,13 +49,27 @@ export function createAuth() {
 
     database: drizzleAdapter(authDb(), {
       provider: 'pg',
+      // Keyed by the modelName configured below ('users', not 'user'): the
+      // adapter resolves a model to a schema entry by that name, and a
+      // mismatch surfaces only at the first request.
       schema: {
-        user: schema.users,
-        session: schema.sessions,
-        account: schema.accounts,
-        verification: schema.verifications,
+        users: schema.users,
+        sessions: schema.sessions,
+        accounts: schema.accounts,
+        verifications: schema.verifications,
+        rateLimit: schema.rateLimits,
       },
     }),
+
+    rateLimit: {
+      enabled: rateLimitEnabled(process.env),
+      window: RATE_LIMIT_WINDOW_SECONDS,
+      max: RATE_LIMIT_MAX_REQUESTS,
+      // Survives a restart and is shared across instances, unlike the default
+      // in-memory counter which resets on every deploy.
+      storage: 'database',
+      customRules: AUTH_RATE_LIMIT_RULES,
+    },
 
     advanced: {
       // uuid v7: time-sortable, and it matches the uuid column type.
@@ -60,10 +85,28 @@ export function createAuth() {
       minPasswordLength: 12,
       // Better Auth's built-in scrypt. Argon2id would mean a native module,
       // which breaks the single portable image of ADR-021 — see ADR-027.
+      sendResetPassword: async ({ user, url }) => {
+        await sendTemplate('resetPassword', user, url)
+      },
+    },
+
+    emailVerification: {
+      sendOnSignUp: true,
+      autoSignInAfterVerification: true,
+      sendVerificationEmail: async ({ user, url }) => {
+        await sendTemplate('verifyEmail', user, url)
+      },
     },
 
     // Magic links keep friction low for client contacts, who sign in rarely.
-    plugins: [magicLink({ sendMagicLink: async () => undefined })],
+    plugins: [
+      magicLink({
+        expiresIn: 60 * 15,
+        sendMagicLink: async ({ email, url }) => {
+          await mailer().send(renderMail('magicLink', { to: email, locale: 'fr', url }))
+        },
+      }),
+    ],
 
     user: {
       modelName: 'users',
@@ -90,6 +133,19 @@ export function createAuth() {
     account: { modelName: 'accounts' },
     verification: { modelName: 'verifications' },
   })
+}
+
+/**
+ * Sends in the RECIPIENT's language, read from their own row (ADR-011) — never
+ * from whoever triggered the mail, and never from a request context.
+ */
+async function sendTemplate(
+  template: TemplateName,
+  user: { email: string; locale?: unknown },
+  url: string,
+): Promise<void> {
+  const locale = isLocale(String(user.locale)) ? (String(user.locale) as Locale) : 'fr'
+  await mailer().send(renderMail(template, { to: user.email, locale, url }))
 }
 
 export type Auth = ReturnType<typeof createAuth>

@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { Client } from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { withPortal, withTenant } from '@/db/tenant'
+import { withPortal, withTenant, withUserLookup } from '@/db/tenant'
 import {
   newId,
   seedOrganization,
@@ -289,5 +289,106 @@ describe('tenant isolation', () => {
     } finally {
       await client.end()
     }
+  })
+})
+
+/**
+ * The organisation switcher spans tenants by design. These tests exist because
+ * a careless version of that feature is the easiest way to punch a hole in the
+ * isolation the rest of this file proves.
+ */
+describe('cross-tenant lookup (migration 0003)', () => {
+  let db: TestDatabase
+  let admin: Client
+  let orgA: { id: string; slug: string }
+  let orgB: { id: string; slug: string }
+  let person: string
+  let outsider: string
+
+  const query = (text: string, params?: unknown[]) => admin.query(text, params)
+
+  beforeAll(async () => {
+    db = await startTestDatabase()
+    admin = new Client({ connectionString: db.adminUrl })
+    await admin.connect()
+
+    orgA = await seedOrganization(query, 'switch-a')
+    orgB = await seedOrganization(query, 'switch-b')
+
+    // One person, two organisations — the group/holding case of ADR-023.
+    person = await seedUser(query, `switcher-${newId()}@example.test`)
+    outsider = await seedUser(query, `outsider-${newId()}@example.test`)
+
+    for (const org of [orgA, orgB]) {
+      await query(
+        'INSERT INTO memberships (id, organization_id, user_id, role) VALUES ($1, $2, $3, $4)',
+        [newId(), org.id, person, 'manager'],
+      )
+    }
+    await query(
+      'INSERT INTO memberships (id, organization_id, user_id, role) VALUES ($1, $2, $3, $4)',
+      [newId(), orgB.id, outsider, 'manager'],
+    )
+  }, 180_000)
+
+  afterAll(async () => {
+    await admin?.end()
+    await db?.stop()
+  })
+
+  it('lists exactly the organisations the person belongs to', async () => {
+    const rows = await withUserLookup(person, (tx) =>
+      tx.execute(sql.raw('SELECT organization_id FROM memberships ORDER BY organization_id')),
+    )
+    const ids = rows.rows.map((row) => (row as { organization_id: string }).organization_id)
+    expect(ids.sort()).toEqual([orgA.id, orgB.id].sort())
+  })
+
+  it("never returns another person's memberships", async () => {
+    const rows = await withUserLookup(person, (tx) =>
+      tx.execute(sql.raw(`SELECT id FROM memberships WHERE user_id = '${outsider}'`)),
+    )
+    expect(rows.rows).toEqual([])
+  })
+
+  it('the lookup policy is INERT inside a tenant transaction', async () => {
+    // THE test of this migration. If the policy were written as a plain
+    // "a user may see their own memberships", a SELECT inside org A would also
+    // return the row from org B, and every count built on memberships would be
+    // quietly wrong — and cross-tenant.
+    const rows = await withTenant({ organizationId: orgA.id }, (tx) =>
+      tx.execute(sql.raw(`SELECT organization_id FROM memberships WHERE user_id = '${person}'`)),
+    )
+    const ids = rows.rows.map((row) => (row as { organization_id: string }).organization_id)
+    expect(ids).toEqual([orgA.id])
+  })
+
+  it('exposes no other table through the lookup context', async () => {
+    const error = await withUserLookup(person, (tx) =>
+      tx.execute(sql.raw('SELECT id FROM invitations')),
+    ).catch((caught: unknown) => caught)
+    // invitations has no lookup policy, so with no tenant context it is empty —
+    // never an error that would hint at its contents.
+    if (error instanceof Error) throw error
+    expect((error as { rows: unknown[] }).rows).toEqual([])
+  })
+
+  it('treats a reused connection with an empty tenant setting as no tenant', async () => {
+    // Regression for migration 0004. A custom GUC reverts to the SESSION value
+    // after SET LOCAL, which is '' once touched — not NULL. Without nullif(),
+    // the next query on that pooled connection raised 22P02 instead of simply
+    // matching nothing. Fail-closed, but broken.
+    await withTenant({ organizationId: orgA.id }, async () => undefined)
+
+    const rows = await withUserLookup(person, (tx) =>
+      tx.execute(sql.raw('SELECT organization_id FROM memberships')),
+    )
+    expect(rows.rows.length).toBe(2)
+  })
+
+  it('rejects a lookup id that is not a uuid', async () => {
+    await expect(withUserLookup("' OR '1'='1", async () => 'reached')).rejects.toThrow(
+      /valid user id/,
+    )
   })
 })

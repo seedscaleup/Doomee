@@ -20,7 +20,14 @@
     "validation_failed": "Some information is invalid.",
     "conflict": "This operation conflicts with the current state.",
     "rate_limited": "Too many attempts. Please try again shortly.",
-    "internal": "Something went wrong. Our team has been notified."
+    "internal": "Something went wrong. Our team has been notified.",
+    "no_active_organization": "No active organisation. Pick one to continue.",
+    "invalid_slug": "The identifier may only contain lowercase letters, digits and hyphens.",
+    "nothing_to_update": "Nothing to save.",
+    "slug_taken": "That identifier is already taken.",
+    "already_member": "That person is already part of the organisation.",
+    "invitation_invalid": "This invitation is invalid or has expired.",
+    "seats_exhausted": "Your subscription has no seat left."
   },
   "notFound": {
     "title": "Page not found",
@@ -59,5 +66,136 @@
       "danger": "Error, overdue, blocked, critical",
       "warning": "Attention, deadline approaching, medium level"
     }
+  },
+  "emails": {
+    "verify": {
+      "subject": "Confirm your email address",
+      "body": "Welcome to doomee. Confirm your address to activate your account.",
+      "cta": "Confirm my address"
+    },
+    "reset": {
+      "subject": "Reset your password",
+      "body": "You asked to reset your password. This link expires in one hour.",
+      "cta": "Choose a new password"
+    },
+    "magic": {
+      "subject": "Your sign-in link",
+      "body": "Sign in to doomee in one click. This link expires in fifteen minutes.",
+      "cta": "Sign me in"
+    },
+    "invitation": {
+      "subject": "{organization} invited you to doomee",
+      "body": "{inviter} invites you to join {organization} on doomee. The invitation expires in seven days.",
+      "cta": "Join the team"
+    }
+  },
+  "auth": {
+    "signIn": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to pick your projects back up.",
+      "email": "Email address",
+      "password": "Password",
+      "submit": "Sign in",
+      "forgot": "Forgot your password?",
+      "noAccount": "No account yet?",
+      "createAccount": "Create an account",
+      "failed": "Incorrect email or password."
+    },
+    "signUp": {
+      "title": "Create your account",
+      "subtitle": "A few seconds is all it takes.",
+      "name": "Your name",
+      "email": "Email address",
+      "password": "Password",
+      "passwordHint": "At least 12 characters.",
+      "submit": "Create my account",
+      "hasAccount": "Already have an account?",
+      "signInLink": "Sign in",
+      "failed": "Could not create the account. Check your details."
+    },
+    "verify": {
+      "title": "Check your inbox",
+      "body": "We sent a confirmation link to {email}. Click it to activate your account.",
+      "backToSignIn": "Back to sign in"
+    },
+    "forgot": {
+      "title": "Forgot your password",
+      "subtitle": "Give us your address and we will send a link.",
+      "submit": "Send the link",
+      "sent": "If an account exists for that address, a link is on its way."
+    },
+    "reset": {
+      "title": "New password",
+      "password": "New password",
+      "submit": "Save",
+      "done": "Password changed. You can sign in.",
+      "failed": "This link is invalid or has expired."
+    },
+    "signOut": "Sign out"
+  },
+  "onboarding": {
+    "title": "Let's create your organisation",
+    "subtitle": "This is your team's space. You can change all of it later.",
+    "name": "Organisation name",
+    "slug": "Identifier",
+    "slugHint": "Lowercase letters, digits and hyphens.",
+    "language": "Default language",
+    "timezone": "Time zone",
+    "currency": "Currency",
+    "submit": "Create the organisation",
+    "failed": "Could not create the organisation."
+  },
+  "nav": {
+    "home": "Home",
+    "myWork": "My work",
+    "projects": "Projects",
+    "results": "Results",
+    "insights": "Insights",
+    "reports": "Reports",
+    "clients": "Clients",
+    "team": "Team",
+    "calendar": "Calendar",
+    "settings": "Settings",
+    "switchOrganization": "Switch organisation"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": {
+      "title": "Profile",
+      "name": "Name",
+      "email": "Email address",
+      "locale": "Interface language",
+      "reportLocale": "Report language",
+      "reportLocaleHint": "You can work in French and produce a report in English.",
+      "timezone": "Time zone",
+      "dateFormat": "Date format",
+      "save": "Save",
+      "saved": "Preferences saved."
+    },
+    "members": {
+      "title": "Members",
+      "invite": "Invite",
+      "email": "Email address",
+      "role": "Role",
+      "name": "Name",
+      "status": "Status",
+      "pending": "Invitation pending",
+      "sent": "Invitation sent to {email}.",
+      "empty": "No members yet."
+    }
+  },
+  "invitation": {
+    "title": "Join {organization}",
+    "body": "You have been invited to join this organisation on doomee.",
+    "accept": "Accept the invitation",
+    "invalid": "This invitation is invalid or has expired.",
+    "signInFirst": "Sign in or create an account to accept."
+  },
+  "roles": {
+    "owner": "Owner",
+    "direction": "Leadership",
+    "manager": "Manager",
+    "collaborator": "Collaborator",
+    "client": "Client"
   }
 }

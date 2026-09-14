@@ -1,5 +1,8 @@
+import 'server-only'
+
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { Pool, type PoolClient } from 'pg'
+import { serverEnv } from '@/lib/env'
 import * as schema from './schema'
 
 /**
@@ -61,8 +64,15 @@ export async function closeDatabase(): Promise<void> {
 }
 
 function poolFor(actor: ActorKind): Pool {
+  // Lazily configure from the environment on first use. configureDatabase()
+  // stays exported so a test can point the pools at a throwaway container
+  // before anything touches them.
+  if (!internalPool || !portalPool) {
+    configureDatabase({ connectionString: serverEnv().DATABASE_URL })
+  }
+
   const pool = actor === 'portal' ? portalPool : internalPool
-  if (!pool) throw new Error('Database not configured. Call configureDatabase() first.')
+  if (!pool) throw new Error('Database not configured')
   return pool
 }
 
@@ -128,6 +138,43 @@ export function withTenant<T>(
   fn: (db: TenantDb) => Promise<T>,
 ): Promise<T> {
   return run('internal', context, fn)
+}
+
+/**
+ * The ONE query that legitimately spans tenants: which organisations does this
+ * person belong to, for the organisation switcher.
+ *
+ * It opens a transaction with app.lookup_user_id set and app.organization_id
+ * deliberately UNSET. Migration 0003 gates the matching policies on exactly
+ * that condition, so they are inert inside any normal tenant transaction and
+ * cannot be used to widen one.
+ *
+ * Nothing else may use this. It returns rows the caller owns, never rows an
+ * organisation owns.
+ */
+export async function withUserLookup<T>(
+  userId: string,
+  fn: (db: TenantDb) => Promise<T>,
+): Promise<T> {
+  if (!UUID.test(userId)) throw new Error('withUserLookup requires a valid user id')
+
+  const client = await poolFor('internal').connect()
+
+  try {
+    await client.query('BEGIN')
+    await client.query('SET LOCAL ROLE app_user')
+    await client.query('SELECT set_config($1, $2, true)', ['app.lookup_user_id', userId])
+
+    const result = await fn(drizzle(client, { schema }))
+    await client.query('COMMIT')
+    return result
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined)
+    throw error
+  } finally {
+    await client.query('RESET ROLE').catch(() => undefined)
+    client.release()
+  }
 }
 
 /** Client portal sessions. Reads the portal.* views only (ADR-026). */

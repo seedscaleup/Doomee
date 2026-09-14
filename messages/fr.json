@@ -20,7 +20,14 @@
     "validation_failed": "Certaines informations sont invalides.",
     "conflict": "Cette opération entre en conflit avec l'état actuel.",
     "rate_limited": "Trop de tentatives. Réessayez dans quelques instants.",
-    "internal": "Une erreur est survenue. Nos équipes sont prévenues."
+    "internal": "Une erreur est survenue. Nos équipes sont prévenues.",
+    "no_active_organization": "Aucune organisation active. Choisissez-en une pour continuer.",
+    "invalid_slug": "L'identifiant ne peut contenir que des lettres minuscules, des chiffres et des tirets.",
+    "nothing_to_update": "Aucune modification à enregistrer.",
+    "slug_taken": "Cet identifiant est déjà utilisé.",
+    "already_member": "Cette personne fait déjà partie de l'organisation.",
+    "invitation_invalid": "Cette invitation est invalide ou a expiré.",
+    "seats_exhausted": "Le nombre de sièges de votre abonnement est atteint."
   },
   "notFound": {
     "title": "Page introuvable",
@@ -59,5 +66,136 @@
       "danger": "Erreur, en retard, bloqué, critique",
       "warning": "Attention, échéance proche, niveau moyen"
     }
+  },
+  "emails": {
+    "verify": {
+      "subject": "Confirmez votre adresse e-mail",
+      "body": "Bienvenue sur doomee. Confirmez votre adresse pour activer votre compte.",
+      "cta": "Confirmer mon adresse"
+    },
+    "reset": {
+      "subject": "Réinitialisez votre mot de passe",
+      "body": "Vous avez demandé à réinitialiser votre mot de passe. Ce lien expire dans une heure.",
+      "cta": "Choisir un nouveau mot de passe"
+    },
+    "magic": {
+      "subject": "Votre lien de connexion",
+      "body": "Connectez-vous à doomee en un clic. Ce lien expire dans quinze minutes.",
+      "cta": "Me connecter"
+    },
+    "invitation": {
+      "subject": "{organization} vous invite sur doomee",
+      "body": "{inviter} vous invite à rejoindre {organization} sur doomee. L'invitation expire dans sept jours.",
+      "cta": "Rejoindre l'équipe"
+    }
+  },
+  "auth": {
+    "signIn": {
+      "title": "Content de vous revoir",
+      "subtitle": "Connectez-vous pour retrouver vos projets.",
+      "email": "Adresse e-mail",
+      "password": "Mot de passe",
+      "submit": "Se connecter",
+      "forgot": "Mot de passe oublié ?",
+      "noAccount": "Pas encore de compte ?",
+      "createAccount": "Créer un compte",
+      "failed": "E-mail ou mot de passe incorrect."
+    },
+    "signUp": {
+      "title": "Créer votre compte",
+      "subtitle": "Quelques secondes suffisent pour commencer.",
+      "name": "Votre nom",
+      "email": "Adresse e-mail",
+      "password": "Mot de passe",
+      "passwordHint": "12 caractères minimum.",
+      "submit": "Créer mon compte",
+      "hasAccount": "Vous avez déjà un compte ?",
+      "signInLink": "Se connecter",
+      "failed": "Impossible de créer le compte. Vérifiez vos informations."
+    },
+    "verify": {
+      "title": "Vérifiez votre boîte mail",
+      "body": "Nous avons envoyé un lien de confirmation à {email}. Cliquez dessus pour activer votre compte.",
+      "backToSignIn": "Retour à la connexion"
+    },
+    "forgot": {
+      "title": "Mot de passe oublié",
+      "subtitle": "Indiquez votre adresse, nous vous enverrons un lien.",
+      "submit": "Envoyer le lien",
+      "sent": "Si un compte existe pour cette adresse, un lien vient de partir."
+    },
+    "reset": {
+      "title": "Nouveau mot de passe",
+      "password": "Nouveau mot de passe",
+      "submit": "Enregistrer",
+      "done": "Mot de passe modifié. Vous pouvez vous connecter.",
+      "failed": "Ce lien est invalide ou a expiré."
+    },
+    "signOut": "Se déconnecter"
+  },
+  "onboarding": {
+    "title": "Créons votre organisation",
+    "subtitle": "C'est l'espace de votre équipe. Vous pourrez tout modifier ensuite.",
+    "name": "Nom de l'organisation",
+    "slug": "Identifiant",
+    "slugHint": "Lettres minuscules, chiffres et tirets.",
+    "language": "Langue par défaut",
+    "timezone": "Fuseau horaire",
+    "currency": "Devise",
+    "submit": "Créer l'organisation",
+    "failed": "Impossible de créer l'organisation."
+  },
+  "nav": {
+    "home": "Accueil",
+    "myWork": "Mon travail",
+    "projects": "Projets",
+    "results": "Résultats",
+    "insights": "Insights",
+    "reports": "Rapports",
+    "clients": "Clients",
+    "team": "Équipe",
+    "calendar": "Calendrier",
+    "settings": "Paramètres",
+    "switchOrganization": "Changer d'organisation"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "profile": {
+      "title": "Profil",
+      "name": "Nom",
+      "email": "Adresse e-mail",
+      "locale": "Langue de l'interface",
+      "reportLocale": "Langue des rapports",
+      "reportLocaleHint": "Vous pouvez travailler en français et produire un rapport en anglais.",
+      "timezone": "Fuseau horaire",
+      "dateFormat": "Format de date",
+      "save": "Enregistrer",
+      "saved": "Préférences enregistrées."
+    },
+    "members": {
+      "title": "Membres",
+      "invite": "Inviter",
+      "email": "Adresse e-mail",
+      "role": "Rôle",
+      "name": "Nom",
+      "status": "Statut",
+      "pending": "Invitation en attente",
+      "sent": "Invitation envoyée à {email}.",
+      "empty": "Aucun membre pour l'instant."
+    }
+  },
+  "invitation": {
+    "title": "Rejoindre {organization}",
+    "body": "Vous avez été invité à rejoindre cette organisation sur doomee.",
+    "accept": "Accepter l'invitation",
+    "invalid": "Cette invitation est invalide ou a expiré.",
+    "signInFirst": "Connectez-vous ou créez un compte pour accepter."
+  },
+  "roles": {
+    "owner": "Propriétaire",
+    "direction": "Direction",
+    "manager": "Manager",
+    "collaborator": "Collaborateur",
+    "client": "Client"
   }
 }

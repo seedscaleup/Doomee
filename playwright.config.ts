@@ -33,12 +33,15 @@ export default defineConfig({
       NODE_ENV: 'production',
       PORT: String(PORT),
       HOSTNAME: '127.0.0.1',
-      DATABASE_URL: 'postgres://doomee:doomee@localhost:5432/doomee',
-      S3_ENDPOINT: 'http://localhost:9000',
-      S3_REGION: 'eu-west-1',
-      S3_BUCKET: 'doomee-local',
-      S3_ACCESS_KEY_ID: 'doomee',
-      S3_SECRET_ACCESS_KEY: 'doomee-secret',
+      APP_URL: baseURL,
+      // scripts/e2e.ts boots the database and hands these down; they are read
+      // from the inherited environment, not pinned here.
+      DATABASE_URL: process.env.DATABASE_URL ?? '',
+      DATABASE_AUTH_URL: process.env.DATABASE_AUTH_URL ?? '',
+      AUTH_SECRET: process.env.AUTH_SECRET ?? '',
+      LOG_LEVEL: 'warn',
+      MAIL_CAPTURE_FILE: process.env.MAIL_CAPTURE_FILE ?? '',
+      AUTH_RATE_LIMIT_DISABLED: process.env.AUTH_RATE_LIMIT_DISABLED ?? '',
     },
   },
 })

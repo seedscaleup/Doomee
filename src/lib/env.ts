@@ -22,11 +22,20 @@ const serverEnvSchema = z.object({
   /** Signs session cookies and tokens. At least 32 characters, never committed. */
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
 
-  S3_ENDPOINT: z.url(),
-  S3_REGION: z.string().min(1),
-  S3_BUCKET: z.string().min(1),
-  S3_ACCESS_KEY_ID: z.string().min(1),
-  S3_SECRET_ACCESS_KEY: z.string().min(1),
+  /**
+   * Object storage. Optional until the storage adapter exists (LOT 3): a
+   * variable that is required before anything reads it only blocks the build
+   * for no benefit. The adapter refuses to start without them.
+   */
+  S3_ENDPOINT: z.url().optional(),
+  S3_REGION: z.string().min(1).optional(),
+  S3_BUCKET: z.string().min(1).optional(),
+  S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+
+  /** Any SMTP endpoint. Unset falls back to the console adapter (ADR-021). */
+  SMTP_URL: z.string().optional(),
+  MAIL_FROM: z.string().default('doomee <no-reply@doomee.app>'),
 
   SENTRY_DSN: z.string().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),

@@ -1,5 +1,8 @@
+import 'server-only'
+
 import { and, eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { memberships, users } from '@/db/schema'
 import { withTenant } from '@/db/tenant'
 import { isLocale } from '@/i18n/routing'
@@ -23,12 +26,30 @@ export type Session = {
 }
 
 export async function getSession(): Promise<Session | null> {
-  const result = await auth().api.getSession({ headers: await headers() })
+  // headers() FIRST, deliberately. During static generation it throws the
+  // bail-out Next uses to mark a route dynamic; resolving auth() before it
+  // would hit environment validation during `next build` instead, and fail the
+  // build for a page that is inherently per-request anyway.
+  const requestHeaders = await headers()
+  const result = await auth().api.getSession({ headers: requestHeaders })
   if (!result?.session) return null
 
   const active = (result.session as { activeOrganizationId?: string | null }).activeOrganizationId
 
   return { userId: result.session.userId, activeOrganizationId: active ?? null }
+}
+
+/**
+ * For pages: an anonymous visitor gets sent to sign-in, not a 500.
+ *
+ * Layouts and pages render in parallel in the App Router, so a page that throws
+ * on a missing session can lose the race against its layout's redirect. Pages
+ * call this; server actions call requireSession, where throwing is correct.
+ */
+export async function requirePageSession(locale: string): Promise<Session> {
+  const session = await getSession()
+  if (!session) redirect(`/${locale}/sign-in`)
+  return session
 }
 
 export async function requireSession(): Promise<Session> {
@@ -70,7 +91,7 @@ export async function requireActor(): Promise<Actor> {
   )
 
   const membership = rows[0]
-  if (!membership || membership.status !== 'active') {
+  if (membership?.status !== 'active') {
     // 404-shaped, not 403: never confirm that an organisation exists.
     throw new AppError('not_found', 'errors.not_found')
   }

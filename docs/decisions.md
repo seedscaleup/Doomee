@@ -34,6 +34,8 @@
 | [ADR-026](#adr-026) | Vues `portal.*` pour l'isolation au niveau colonne | Proposée |
 | [ADR-027](#adr-027) | scrypt plutôt qu'Argon2id pour les mots de passe | Proposée |
 | [ADR-028](#adr-028) | `users` : lignes globales, visibilité par organisation | **Acceptée** |
+| [ADR-029](#adr-029) | Rôles PG par groupe + `SET LOCAL ROLE` `NOINHERIT` | **Acceptée** |
+| [ADR-030](#adr-030) | Barrels de module côté serveur uniquement | Proposée |
 
 ---
 
@@ -631,6 +633,56 @@ propriétaire. L'application peut lire un collègue, jamais le réécrire.
 (`tenant-isolation.test.ts`) qui rougit dès que la politique saute. ❌ Toute lecture de `users` doit
 se faire dans un contexte tenant : un écran hors organisation (choix de l'organisation à la connexion)
 passe par la couche d'authentification, pas par `withTenant`.
+
+---
+
+<a id="adr-029"></a>
+## ADR-029 — Rôles de groupe et `SET LOCAL ROLE` plutôt que deux comptes de connexion
+**Statut** : **Acceptée** · LOT 1 · *Précise la mise en œuvre d'ADR-005*
+
+**Contexte** — ADR-005 impose deux rôles PostgreSQL distincts pour l'interne et le portail. Restait à
+décider comment l'application les endosse.
+
+**Décision** — `app_user` et `app_portal` sont des rôles de **groupe** `NOLOGIN`. L'application se
+connecte avec **un seul** rôle de connexion, membre des deux **avec `NOINHERIT`**, et bascule dans l'un
+ou l'autre par transaction via `SET LOCAL ROLE`. Les deux pools restent séparés.
+
+**Pourquoi `NOINHERIT` est une exigence de sécurité, pas un détail** — PostgreSQL sélectionne les
+politiques RLS avec `has_privs_of_role`. Un membre **`INHERIT`** des deux rôles recevrait donc l'**union**
+de leurs politiques : le portail verrait les lignes internes. Avec `NOINHERIT`, le rôle de connexion n'a
+aucun privilège tant qu'il n'a pas fait `SET ROLE`. Un test d'intégration dédié le prouve, parce qu'une
+propriété aussi subtile ne doit pas reposer sur la mémoire de l'équipe.
+
+**Pourquoi pas deux comptes de connexion** — il faudrait deux mots de passe, deux chaînes de connexion,
+deux rotations, et la même garantie. Le coût opérationnel est doublé pour un bénéfice nul :
+la barrière tient aux politiques et aux privilèges, pas au nombre de comptes.
+
+**Conséquences** — ✅ Un seul secret à gérer, garantie identique, mise en œuvre testée à l'identique en
+local, en CI et en production. ❌ `SET LOCAL ROLE` ajoute un aller-retour par transaction ;
+les identifiants sont créés par `src/db/provision.ts`, jamais par une migration.
+
+---
+
+<a id="adr-030"></a>
+## ADR-030 — Le `index.ts` d'un module est une entrée **serveur**
+**Statut** : Proposée · LOT 1
+
+**Le problème, rencontré au premier écran** — la règle « un module s'importe par son `index.ts` » et la
+frontière client/serveur de React se contredisent : un composant client qui importe le barrel tire
+`queries.ts`, donc `next/headers`, donc une erreur de build obscure.
+
+**Décision**
+- `index.ts` est l'entrée **serveur** : composants serveur, autres modules.
+- Un composant **client** importe le fichier précis dont il a besoin : `mutations.ts` (marqué
+  `'use server'`, donc une frontière RPC) ou `service.ts` (pur, donc sûr partout).
+- Toute surface serveur porte `import 'server-only'`, si bien qu'un import client fautif échoue
+  **au build**, avec un message qui nomme le problème.
+
+**Pourquoi** — la convention seule se fait oublier. `server-only` la rend mécanique : on ne peut plus
+se tromper en silence, seulement bruyamment et tôt.
+
+**Conséquences** — ✅ Frontière explicite et vérifiée par l'outillage. ❌ Deux styles d'import à
+connaître ; documenté dans `CLAUDE.md` §5 et visible dans chaque composant client.
 
 ---
 

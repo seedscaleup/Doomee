@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { bigint, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { users } from './tenancy'
 
 /**
@@ -66,7 +66,23 @@ export const verifications = pgTable(
   (table) => [index('verifications_identifier_idx').on(table.identifier)],
 )
 
-export const authTables = { sessions, accounts, verifications }
+/**
+ * Rate-limit counters, in the database rather than in memory: an in-memory
+ * counter resets on every deploy and is not shared between instances, which
+ * makes the limit a suggestion rather than a control.
+ */
+export const rateLimits = pgTable(
+  'rate_limits',
+  {
+    id: uuid('id').primaryKey(),
+    key: text('key').notNull(),
+    count: integer('count').notNull().default(0),
+    lastRequest: bigint('last_request', { mode: 'number' }).notNull(),
+  },
+  (table) => [index('rate_limits_key_idx').on(table.key)],
+)
+
+export const authTables = { sessions, accounts, verifications, rateLimits }
 export type AuthTable = keyof typeof authTables
 
 /** Re-exported so the Better Auth adapter can be handed the user table too. */

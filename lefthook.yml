@@ -8,7 +8,13 @@ pre-commit:
     typecheck:
       run: pnpm typecheck
 pre-push:
+  parallel: true
   commands:
+    # Lint the WHOLE tree here, not just staged files: a formatting drift in an
+    # untouched file still turns CI red, and finding that out on the runner
+    # costs a round trip.
+    lint:
+      run: pnpm lint
     boundaries:
       run: pnpm check:boundaries
     i18n:

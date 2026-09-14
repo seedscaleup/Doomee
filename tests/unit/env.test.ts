@@ -19,6 +19,7 @@ describe('server environment', () => {
     const env = parseServerEnv(VALID)
     expect(env.DATABASE_URL).toBe(VALID.DATABASE_URL)
     expect(env.LOG_LEVEL).toBe('info')
+    expect(env.MAIL_FROM).toContain('doomee')
   })
 
   it('fails fast when a required variable is missing', () => {
@@ -28,6 +29,11 @@ describe('server environment', () => {
 
   it('rejects a malformed endpoint rather than failing later at runtime', () => {
     expect(() => parseServerEnv({ ...VALID, S3_ENDPOINT: 'not-a-url' })).toThrow(/S3_ENDPOINT/)
+  })
+
+  it('does not require object storage before the adapter exists (LOT 3)', () => {
+    const { S3_ENDPOINT: _a, S3_BUCKET: _b, S3_ACCESS_KEY_ID: _c, ...withoutStorage } = VALID
+    expect(() => parseServerEnv(withoutStorage)).not.toThrow()
   })
 
   it('refuses a short AUTH_SECRET rather than signing sessions weakly', () => {

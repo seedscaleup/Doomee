@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { uuidv7 } from 'uuidv7'
 import type { z } from 'zod'
 import { auditLogs } from '@/db/schema'
