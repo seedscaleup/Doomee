@@ -42,6 +42,7 @@ export default defineConfig({
       LOG_LEVEL: 'warn',
       MAIL_CAPTURE_FILE: process.env.MAIL_CAPTURE_FILE ?? '',
       AUTH_RATE_LIMIT_DISABLED: process.env.AUTH_RATE_LIMIT_DISABLED ?? '',
+      ENABLE_DEV_PAGES: process.env.ENABLE_DEV_PAGES ?? '',
     },
   },
 })

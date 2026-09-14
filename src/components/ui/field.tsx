@@ -24,17 +24,17 @@ export function Field({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="text-label font-medium">
         {label}
       </label>
       {children({ id, describedBy })}
       {hint ? (
-        <p id={hintId} className="text-xs text-muted">
+        <p id={hintId} className="text-caption text-muted">
           {hint}
         </p>
       ) : null}
       {error ? (
-        <p id={errorId} role="alert" className="text-xs text-danger">
+        <p id={errorId} role="alert" className="text-caption text-danger-text">
           {error}
         </p>
       ) : null}
@@ -42,10 +42,10 @@ export function Field({
   )
 }
 
+/* 16px text on controls: anything smaller makes iOS zoom on focus. */
 const CONTROL =
-  'min-h-11 w-full rounded-[--radius-doomee] border border-border bg-surface px-3 text-base ' +
-  'placeholder:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 ' +
-  'focus-visible:outline-doomee-black disabled:opacity-60'
+  'min-h-touch w-full rounded-doomee border border-border bg-surface px-3 text-base ' +
+  'placeholder:text-subtle disabled:opacity-60 disabled:bg-surface-sunken'
 
 export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cn(CONTROL, props.className)} />
@@ -57,23 +57,30 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
 
 /**
  * The yellow button is the single "this is where it happens" element per screen
- * (CLAUDE.md §9). Secondary actions are deliberately quiet.
+ * (CLAUDE.md §9). Secondary actions are deliberately quiet, and destructive
+ * ones are red — never yellow, because yellow means "go ahead".
  */
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
+
+const BUTTON_VARIANT: Record<ButtonVariant, string> = {
+  primary: 'bg-doomee-yellow text-doomee-black hover:brightness-95',
+  secondary: 'border border-border bg-surface text-doomee-black hover:bg-surface-sunken',
+  danger: 'bg-danger-text text-surface hover:brightness-110',
+  ghost: 'text-doomee-black hover:bg-surface-sunken',
+}
+
 export function Button({
   variant = 'primary',
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' }) {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
   return (
     <button
       type={props.type ?? 'button'}
       {...props}
       className={cn(
-        'inline-flex min-h-11 items-center justify-center rounded-[--radius-doomee] px-4 text-sm font-semibold',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-doomee-black',
-        'disabled:opacity-60',
-        variant === 'primary'
-          ? 'bg-doomee-yellow text-doomee-black'
-          : 'border border-border bg-surface text-doomee-black',
+        'inline-flex min-h-touch items-center justify-center rounded-doomee px-4 text-label font-semibold',
+        'transition-[filter,background-color] disabled:opacity-60 disabled:hover:brightness-100',
+        BUTTON_VARIANT[variant],
         props.className,
       )}
     />
@@ -91,10 +98,10 @@ export function Alert({
     <p
       role={tone === 'error' ? 'alert' : 'status'}
       className={cn(
-        'rounded-[--radius-doomee] border px-3 py-2 text-sm',
+        'rounded-doomee border px-3 py-2 text-label',
         tone === 'error'
-          ? 'border-danger/30 bg-danger/5 text-danger'
-          : 'border-success/30 bg-success/5 text-success',
+          ? 'border-danger/30 bg-danger-soft text-danger-text'
+          : 'border-success/30 bg-success-soft text-success-text',
       )}
     >
       {children}

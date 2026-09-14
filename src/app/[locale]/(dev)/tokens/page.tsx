@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { isLocale } from '@/i18n/routing'
+import { devPagesEnabled } from '@/lib/dev-pages'
 
 /**
  * Visual review of the design tokens (D4). Development only — this route is
@@ -17,8 +18,15 @@ const TOKENS = [
   { key: 'warning', cssVar: '--color-warning', value: '#F59E0B', swatch: 'bg-warning' },
 ] as const
 
+/**
+ * Rendered per request, not prerendered: the gate below reads the environment,
+ * and a statically generated page would bake in the answer from build time —
+ * which is how the accessibility scan ended up scanning a 404.
+ */
+export const dynamic = 'force-dynamic'
+
 export default async function DesignTokensPage(props: { params: Promise<{ locale: string }> }) {
-  if (process.env.NODE_ENV === 'production') notFound()
+  if (!devPagesEnabled(process.env)) notFound()
 
   const { locale } = await props.params
   if (!isLocale(locale)) notFound()

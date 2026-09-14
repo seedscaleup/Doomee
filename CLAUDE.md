@@ -29,10 +29,10 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | **LOT 1 terminé et vérifié** — `pnpm verify` vert (353 unitaires · 49 intégration · 50 E2E) |
+| **Phase actuelle** | **LOT 2 terminé et vérifié** — `pnpm verify` vert |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | Tenancy, RLS, authentification, invitations, sélecteur d'organisation, préférences FR/EN |
-| **Prochaine étape** | **LOT 2 — design system et shell applicatif** |
+| **Dernier jalon** | Design system : jetons, 11 composants, navigation dérivée des permissions, palette `⌘K`, formats `Intl`, scan `axe` |
+| **Prochaine étape** | **LOT 3 — clients** |
 | **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md` |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
@@ -66,7 +66,7 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 | Next.js 15 (App Router, RSC, Server Actions) · TypeScript strict · Node 22 | |
 | PostgreSQL 16 + **RLS** · **Drizzle ORM** + drizzle-kit | ADR-002, ADR-004 |
 | **Better Auth** (auto-hébergé) | ADR-003 |
-| Tailwind v4 + shadcn/ui · next-intl · React Hook Form + Zod | |
+| Tailwind v4 · composants possédés sur `<dialog>` natif (ADR-031) · next-intl · Zod | |
 | pg-boss (jobs) · `StorageAdapter` S3-compatible · `MailAdapter` (SMTP par défaut) + React Email · @react-pdf/renderer | ADR-007, ADR-015, ADR-021 |
 | Vitest + Testcontainers · Playwright · Biome · Lefthook · pnpm | |
 
@@ -169,6 +169,10 @@ donc un import client fautif échoue au build au lieu de casser le bundle en sil
 
 - **Règle du jaune** : couleur d'**action et d'énergie**. Un seul élément jaune dominant par écran. Jamais en fond large. Texte sur jaune toujours `#111111`.
 - Jamais de couleur en dur dans un composant : passer par les jetons.
+- 🎨 **Aplat ≠ texte** (ADR-032). Les couleurs de marque servent aux **aplats, bordures et points** (seuil 3:1).
+  Dès qu'une couleur porte du **texte**, utiliser sa sœur `-text` : `text-success-text`, `text-danger-text`,
+  `text-warning-text`, `text-info-text`. `tests/unit/contrast.test.ts` lit `globals.css` et échoue sinon.
+- **L'orange n'est jamais seul porteur de sens** : toujours accompagné d'un libellé ou d'une bordure.
 - Personnalité : simple · fun · smart · dynamique · professionnelle · humaine. **Jamais infantilisant.**
 - Contraste AA minimum, focus visible, navigation clavier complète.
 
@@ -253,6 +257,10 @@ pnpm verify           # tout, dans l'ordre de la CI
 | ❌ Une page qui appelle `requireSession()` directement | → `requirePageSession(locale)` : layout et page rendent en parallèle |
 | ❌ Un fichier de test jetable à la racine du projet | → il casse `next build`, qui typecheck tout le dépôt |
 | ❌ `getByRole('alert')` nu dans un test E2E | → Next ajoute son propre annonceur de route ; scoper via `formAlert()` |
+| ❌ `text-success` / `text-danger` / `text-warning` | → les sœurs `-text`, sinon le contraste échoue (ADR-032) |
+| ❌ Un scan `axe` sans vérifier quelle page est rendue | → il passe sur un 404 ; assertion du titre exact d'abord |
+| ❌ Une page `dev` gardée par `NODE_ENV` seul | → elle est pré-rendue au build ; utiliser `devPagesEnabled()` + `force-dynamic` |
+| ❌ Une entrée de menu vers une route inexistante | → `planned: true` dans `NAV_ENTRIES`, retiré par le lot qui la crée |
 | ❌ Commencer l'IA, les intégrations ou le suivi du temps | → **V2** (ADR-018) |
 
 ---

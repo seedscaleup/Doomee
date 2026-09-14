@@ -36,6 +36,8 @@
 | [ADR-028](#adr-028) | `users` : lignes globales, visibilité par organisation | **Acceptée** |
 | [ADR-029](#adr-029) | Rôles PG par groupe + `SET LOCAL ROLE` `NOINHERIT` | **Acceptée** |
 | [ADR-030](#adr-030) | Barrels de module côté serveur uniquement | Proposée |
+| [ADR-031](#adr-031) | `<dialog>` natif plutôt qu'une bibliothèque de modales | Proposée |
+| [ADR-032](#adr-032) | Couleurs de marque en aplat, variantes `-text` accessibles | **Acceptée** |
 
 ---
 
@@ -683,6 +685,67 @@ se tromper en silence, seulement bruyamment et tôt.
 
 **Conséquences** — ✅ Frontière explicite et vérifiée par l'outillage. ❌ Deux styles d'import à
 connaître ; documenté dans `CLAUDE.md` §5 et visible dans chaque composant client.
+
+---
+
+<a id="adr-031"></a>
+## ADR-031 — `<dialog>` natif plutôt qu'une bibliothèque de modales
+**Statut** : Proposée · LOT 2
+
+**Contexte** — Le LOT 2 a besoin de trois surcouches : confirmation, formulaire en feuille, palette de
+commandes. `CLAUDE.md` §4 cite shadcn/ui, dont la substance est « posséder ses composants », bâtis sur Radix.
+
+**Décision** — Garder la philosophie shadcn (les composants vivent dans notre dépôt, pas dans une
+dépendance) et bâtir les modales sur l'élément **`<dialog>` natif** plutôt que sur Radix Dialog.
+
+**Pourquoi** — `showModal()` fournit gratuitement les quatre choses qu'une modale faite main rate :
+piégeage du focus, fermeture par Échap, contenu d'arrière-plan rendu inerte, et placement dans la
+couche supérieure. C'est du code en moins, pas en plus. Et c'est du JavaScript en moins dans le
+bundle, ce qui compte directement pour la contrainte mobile et pour le budget du portail client.
+
+Nous n'avons pas non plus lancé le CLI shadcn : il génère son propre jeu de variables CSS
+(`--background`, `--primary`…) qui entrerait en collision avec la palette Doomee. Reprendre ses
+composants en les écrivant sur nos jetons donne le même résultat sans le conflit.
+
+**Conséquences** — ✅ Accessibilité native, zéro dépendance, bundle plus léger.
+❌ Pas de primitive toute faite pour les cas que `<dialog>` ne couvre pas (combobox, menu riche) :
+Radix reste disponible et sera ajouté **au composant qui en aura besoin**, pas par anticipation.
+
+---
+
+<a id="adr-032"></a>
+## ADR-032 — Couleurs de marque pour les aplats, variantes `-text` pour le texte
+**Statut** : **Acceptée** · LOT 2 · *Corrige une violation de contraste réelle*
+
+**Le problème, trouvé par le scan axe du LOT 2** — les couleurs sémantiques du cahier des charges
+passent le seuil de **3:1** exigé d'un aplat, d'une bordure ou d'un point, mais **pas** le **4,5:1**
+exigé d'un texte :
+
+| Jeton | Contraste sur le fond | Verdict en texte |
+|---|---|---|
+| `--color-success` `#22A06B` | 3,18 | ❌ |
+| `--color-danger` `#E5484D` | 3,74 | ❌ |
+| `--color-warning` `#F59E0B` | **2,05** | ❌ |
+| `--color-info` `#3B82F6` | 3,52 | ❌ |
+| `--color-subtle` `#93938C` | 2,96 | ❌ |
+
+**Décision** — **Les couleurs de marque ne changent pas.** Elles appartiennent à l'identité du
+commanditaire. Chacune reçoit une sœur `-text` assombrie, utilisée dès que la couleur porte du texte :
+`success-text #177552` · `danger-text #C0272C` · `warning-text #B45309` · `info-text #2563EB`.
+`--color-subtle` passe à `#6D6D66` et `--color-border-strong` à `#9C9C93`.
+
+Le bouton destructif utilise `danger-text` en fond : blanc sur `#E5484D` ne donne que 3,91:1.
+
+**L'exception assumée : le jaune et l'orange**
+- `#FFD21F` est illisible sous du texte blanc (1,45:1) et excellent sous du noir (13:1). D'où la règle
+  « texte sur jaune toujours `#111111` », désormais vérifiée par un test.
+- `#F59E0B` reste sous 3:1 même en aplat. On ne change pas la marque : la règle est que la couleur
+  d'avertissement **n'est jamais le seul porteur de sens** — un point est toujours accompagné de son
+  libellé, un badge a toujours du texte et une bordure. C'est WCAG 1.4.1, qui s'applique de toute façon.
+
+**Ce qui empêche la régression** — `tests/unit/contrast.test.ts` lit les valeurs **dans `globals.css`**
+et vérifie chaque paire. Un jeton éclairci de deux crans paraît correct à qui le change et devient
+illisible pour tout le monde ; seul un test attrape ça.
 
 ---
 

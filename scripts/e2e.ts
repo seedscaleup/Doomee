@@ -51,6 +51,10 @@ async function main(): Promise<number> {
         // which any honest per-IP limit refuses. The limits themselves are
         // asserted by tests/unit/auth-rate-limit.test.ts.
         AUTH_RATE_LIMIT_DISABLED: 'true',
+        // The gallery is where the accessibility scan exercises every
+        // component at once, so it has to render in the production build the
+        // suite runs against.
+        ENABLE_DEV_PAGES: 'true',
       },
     })
 

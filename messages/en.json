@@ -11,7 +11,13 @@
     "back": "Back",
     "language": "Language",
     "french": "French",
-    "english": "English"
+    "english": "English",
+    "retry": "Try again",
+    "search": "Search",
+    "all": "All",
+    "close": "Close",
+    "delete": "Delete",
+    "confirm": "Confirm"
   },
   "errors": {
     "unauthenticated": "You need to sign in to continue.",
@@ -156,7 +162,11 @@
     "team": "Team",
     "calendar": "Calendar",
     "settings": "Settings",
-    "switchOrganization": "Switch organisation"
+    "switchOrganization": "Switch organisation",
+    "mainNavigation": "Main navigation",
+    "commandPalette": "Go to…",
+    "commandPaletteHint": "⌘K",
+    "noResults": "No results."
   },
   "settings": {
     "title": "Settings",
@@ -197,5 +207,100 @@
     "manager": "Manager",
     "collaborator": "Collaborator",
     "client": "Client"
+  },
+  "devDesign": {
+    "title": "Visual vocabulary",
+    "description": "Review of every Doomee component. One dominant yellow element per screen.",
+    "sections": {
+      "header": "Page header",
+      "buttons": "Buttons",
+      "fields": "Fields",
+      "badges": "Statuses and priorities",
+      "progress": "Progress",
+      "avatars": "People",
+      "filters": "Filters",
+      "table": "Lists",
+      "empty": "Empty state",
+      "timeline": "Activity feed",
+      "overlays": "Overlays",
+      "loading": "Loading"
+    },
+    "demo": {
+      "projectTitle": "Back-to-school campaign",
+      "projectDescription": "Objective: generate 100 qualified leads before the end of October.",
+      "primaryAction": "New action",
+      "fieldLabel": "Project name",
+      "fieldHint": "Visible to the client.",
+      "fieldError": "This field is required.",
+      "selectLabel": "Owner",
+      "successMessage": "Changes saved.",
+      "progressLabel": "Project progress",
+      "emptyTitle": "No projects yet",
+      "emptyDescription": "Create your first project to start tracking results.",
+      "timelineDone": "Sandra completed Carousel #12",
+      "timelineAdded": "Mike added Campaign video",
+      "timelineRisk": "Client approval pending for 3 days",
+      "openSheet": "Open the form",
+      "openConfirm": "Open the confirmation",
+      "confirmTitle": "Delete this project?",
+      "confirmDescription": "This cannot be undone.",
+      "sheetTitle": "New project"
+    }
+  },
+  "status": {
+    "project": {
+      "to_start": "To start",
+      "in_progress": "In progress",
+      "in_review": "In review",
+      "paused": "Paused",
+      "blocked": "Blocked",
+      "done": "Done",
+      "archived": "Archived"
+    },
+    "action": {
+      "todo": "To do",
+      "in_progress": "In progress",
+      "in_review": "In review",
+      "done": "Done",
+      "blocked": "Blocked",
+      "cancelled": "Cancelled"
+    },
+    "deliverable": {
+      "draft": "Draft",
+      "production": "In production",
+      "internal_review": "Internal review",
+      "client_review": "Client review",
+      "changes_requested": "Changes requested",
+      "approved": "Approved",
+      "published": "Published"
+    },
+    "objective": {
+      "draft": "Draft",
+      "active": "Active",
+      "achieved": "Achieved",
+      "missed": "Missed",
+      "cancelled": "Cancelled"
+    },
+    "health": {
+      "healthy": "Healthy",
+      "at_risk": "At risk",
+      "blocked": "Blocked"
+    },
+    "member": {
+      "invited": "Invited",
+      "active": "Active",
+      "suspended": "Deactivated"
+    }
+  },
+  "priority": {
+    "low": "Low",
+    "normal": "Normal",
+    "high": "High",
+    "urgent": "Urgent"
+  },
+  "riskLevel": {
+    "low": "Low",
+    "medium": "Medium",
+    "critical": "Critical"
   }
 }

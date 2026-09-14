@@ -4,22 +4,34 @@ import { useState, useTransition } from 'react'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { cn } from '@/lib/utils'
 import { switchOrganization } from '@/modules/organizations/switch-action'
+import { CommandPalette } from './command-palette'
+import type { ShellNavItem } from './nav-item'
 
 export type OrganizationChoice = { organizationId: string; name: string }
 
 /**
- * Internal shell: a bottom bar on mobile, a side rail from `sm` up.
- * Designed at 375px first, with 44px touch targets (CLAUDE.md rule 9).
+ * The internal shell: a side rail from `sm` up, a bottom bar on phones.
+ *
+ * The menu arrives already filtered by permissions (navigationFor) — this
+ * component never decides who sees what, it only draws it.
  */
 export function AppShell({
   organizations,
   activeOrganizationId,
+  items,
   labels,
   children,
 }: {
   organizations: OrganizationChoice[]
   activeOrganizationId: string
-  labels: { home: string; team: string; settings: string; switchOrganization: string }
+  items: readonly ShellNavItem[]
+  labels: {
+    mainNavigation: string
+    switchOrganization: string
+    commandPalette: string
+    commandPaletteHint: string
+    noResults: string
+  }
   children: React.ReactNode
 }) {
   const pathname = usePathname()
@@ -27,11 +39,7 @@ export function AppShell({
   const [pending, startTransition] = useTransition()
   const [current, setCurrent] = useState(activeOrganizationId)
 
-  const items = [
-    { href: '/app', label: labels.home },
-    { href: '/app/team', label: labels.team },
-    { href: '/app/settings', label: labels.settings },
-  ] as const
+  const primary = items.filter((item) => item.primary).slice(0, 4)
 
   function onSwitch(event: React.ChangeEvent<HTMLSelectElement>) {
     const next = event.target.value
@@ -52,10 +60,16 @@ export function AppShell({
           label={labels.switchOrganization}
           disabled={pending}
         />
+        <CommandPalette
+          items={items}
+          label={labels.commandPalette}
+          hint={labels.commandPaletteHint}
+          noResults={labels.noResults}
+        />
       </header>
 
       <nav
-        aria-label={labels.home}
+        aria-label={labels.mainNavigation}
         className="hidden w-56 shrink-0 flex-col gap-4 border-r border-border bg-surface p-4 sm:flex"
       >
         <OrganizationPicker
@@ -65,10 +79,16 @@ export function AppShell({
           label={labels.switchOrganization}
           disabled={pending}
         />
+        <CommandPalette
+          items={items}
+          label={labels.commandPalette}
+          hint={labels.commandPaletteHint}
+          noResults={labels.noResults}
+        />
         <ul className="flex flex-col gap-1">
           {items.map((item) => (
-            <li key={item.href}>
-              <NavLink href={item.href} active={pathname === item.href}>
+            <li key={item.key}>
+              <NavLink href={item.href} active={isActive(pathname, item.href)}>
                 {item.label}
               </NavLink>
             </li>
@@ -78,12 +98,14 @@ export function AppShell({
 
       <main className="flex-1 px-4 py-6 pb-24 sm:px-8 sm:pb-8">{children}</main>
 
+      {/* Bottom bar, thumb-reachable, at most four targets so each stays wide. */}
       <nav
-        aria-label={labels.home}
-        className="fixed inset-x-0 bottom-0 grid grid-cols-3 border-t border-border bg-surface sm:hidden"
+        aria-label={labels.mainNavigation}
+        className="fixed inset-x-0 bottom-0 grid border-t border-border bg-surface sm:hidden"
+        style={{ gridTemplateColumns: `repeat(${primary.length}, minmax(0, 1fr))` }}
       >
-        {items.map((item) => (
-          <NavLink key={item.href} href={item.href} active={pathname === item.href} compact>
+        {primary.map((item) => (
+          <NavLink key={item.key} href={item.href} active={isActive(pathname, item.href)} compact>
             {item.label}
           </NavLink>
         ))}
@@ -92,25 +114,32 @@ export function AppShell({
   )
 }
 
+/** /app matches only itself; every other entry also matches its subtree. */
+function isActive(pathname: string, href: string): boolean {
+  return href === '/app' ? pathname === href : pathname.startsWith(href)
+}
+
 function NavLink({
   href,
   active,
   compact,
   children,
 }: {
-  href: '/app' | '/app/team' | '/app/settings'
+  href: string
   active: boolean
   compact?: boolean
   children: React.ReactNode
 }) {
   return (
     <Link
-      href={href}
+      // Routes are typed, but this list is data-driven; the entries are
+      // declared in NAV_ENTRIES and covered by tests/unit/navigation.test.ts.
+      href={href as '/app'}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'flex min-h-11 items-center rounded-[--radius-doomee] px-3 text-sm font-medium',
-        compact ? 'justify-center' : '',
-        active ? 'bg-doomee-black text-surface' : 'text-doomee-black',
+        'flex min-h-touch items-center rounded-doomee px-3 text-label font-medium',
+        compact ? 'justify-center text-center' : '',
+        active ? 'bg-doomee-black text-surface' : 'text-doomee-black hover:bg-surface-sunken',
       )}
     >
       {children}
@@ -132,7 +161,7 @@ function OrganizationPicker({
   disabled: boolean
 }) {
   if (organizations.length <= 1) {
-    return <span className="text-sm font-semibold">{organizations[0]?.name}</span>
+    return <span className="truncate text-label font-semibold">{organizations[0]?.name}</span>
   }
 
   return (
@@ -141,7 +170,7 @@ function OrganizationPicker({
       value={value}
       onChange={onChange}
       disabled={disabled}
-      className="min-h-11 w-full rounded-[--radius-doomee] border border-border bg-surface px-3 text-sm font-medium"
+      className="min-h-touch w-full rounded-doomee border border-border bg-surface px-3 text-label font-medium"
     >
       {organizations.map((organization) => (
         <option key={organization.organizationId} value={organization.organizationId}>

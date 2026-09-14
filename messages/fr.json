@@ -11,7 +11,13 @@
     "back": "Retour",
     "language": "Langue",
     "french": "Français",
-    "english": "Anglais"
+    "english": "Anglais",
+    "retry": "Réessayer",
+    "search": "Rechercher",
+    "all": "Tous",
+    "close": "Fermer",
+    "delete": "Supprimer",
+    "confirm": "Confirmer"
   },
   "errors": {
     "unauthenticated": "Vous devez être connecté pour continuer.",
@@ -156,7 +162,11 @@
     "team": "Équipe",
     "calendar": "Calendrier",
     "settings": "Paramètres",
-    "switchOrganization": "Changer d'organisation"
+    "switchOrganization": "Changer d'organisation",
+    "mainNavigation": "Navigation principale",
+    "commandPalette": "Aller à…",
+    "commandPaletteHint": "⌘K",
+    "noResults": "Aucun résultat."
   },
   "settings": {
     "title": "Paramètres",
@@ -197,5 +207,100 @@
     "manager": "Manager",
     "collaborator": "Collaborateur",
     "client": "Client"
+  },
+  "devDesign": {
+    "title": "Vocabulaire visuel",
+    "description": "Revue de tous les composants Doomee. Un seul élément jaune dominant par écran.",
+    "sections": {
+      "header": "En-tête de page",
+      "buttons": "Boutons",
+      "fields": "Champs",
+      "badges": "Statuts et priorités",
+      "progress": "Progression",
+      "avatars": "Personnes",
+      "filters": "Filtres",
+      "table": "Listes",
+      "empty": "État vide",
+      "timeline": "Fil d'activité",
+      "overlays": "Surcouches",
+      "loading": "Chargement"
+    },
+    "demo": {
+      "projectTitle": "Campagne de rentrée",
+      "projectDescription": "Objectif : générer 100 leads qualifiés avant fin octobre.",
+      "primaryAction": "Nouvelle action",
+      "fieldLabel": "Nom du projet",
+      "fieldHint": "Visible par le client.",
+      "fieldError": "Ce champ est obligatoire.",
+      "selectLabel": "Responsable",
+      "successMessage": "Modifications enregistrées.",
+      "progressLabel": "Avancement du projet",
+      "emptyTitle": "Aucun projet pour l'instant",
+      "emptyDescription": "Créez votre premier projet pour commencer à suivre vos résultats.",
+      "timelineDone": "Sandra a terminé Carrousel #12",
+      "timelineAdded": "Mike a ajouté Vidéo campagne",
+      "timelineRisk": "Validation client en attente depuis 3 jours",
+      "openSheet": "Ouvrir le formulaire",
+      "openConfirm": "Ouvrir la confirmation",
+      "confirmTitle": "Supprimer ce projet ?",
+      "confirmDescription": "Cette action est irréversible.",
+      "sheetTitle": "Nouveau projet"
+    }
+  },
+  "status": {
+    "project": {
+      "to_start": "À démarrer",
+      "in_progress": "En cours",
+      "in_review": "En validation",
+      "paused": "En pause",
+      "blocked": "Bloqué",
+      "done": "Terminé",
+      "archived": "Archivé"
+    },
+    "action": {
+      "todo": "À faire",
+      "in_progress": "En cours",
+      "in_review": "En validation",
+      "done": "Terminé",
+      "blocked": "Bloqué",
+      "cancelled": "Annulé"
+    },
+    "deliverable": {
+      "draft": "Brouillon",
+      "production": "En production",
+      "internal_review": "Validation interne",
+      "client_review": "Validation client",
+      "changes_requested": "Modification demandée",
+      "approved": "Validé",
+      "published": "Publié"
+    },
+    "objective": {
+      "draft": "Brouillon",
+      "active": "En cours",
+      "achieved": "Atteint",
+      "missed": "Non atteint",
+      "cancelled": "Annulé"
+    },
+    "health": {
+      "healthy": "En bonne santé",
+      "at_risk": "À risque",
+      "blocked": "Bloqué"
+    },
+    "member": {
+      "invited": "Invité",
+      "active": "Actif",
+      "suspended": "Désactivé"
+    }
+  },
+  "priority": {
+    "low": "Faible",
+    "normal": "Normale",
+    "high": "Haute",
+    "urgent": "Urgente"
+  },
+  "riskLevel": {
+    "low": "Faible",
+    "medium": "Moyen",
+    "critical": "Critique"
   }
 }

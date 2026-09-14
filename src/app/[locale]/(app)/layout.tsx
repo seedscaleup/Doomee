@@ -2,8 +2,9 @@ import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { AppShell } from '@/components/layout/app-shell'
 import { setActiveOrganization } from '@/lib/auth/session-store'
+import { navigationFor } from '@/lib/permissions'
 import { listMembershipsForUser } from '@/modules/organizations'
-import { getSession } from '@/server'
+import { getSession, requireActor } from '@/server'
 
 /**
  * The internal workspace gate.
@@ -36,15 +37,28 @@ export default async function AppLayout(props: {
 
   const t = await getTranslations('nav')
 
+  // The menu is derived from the actor's permissions, then labelled. The
+  // interface never decides who sees what — it asks the same can() the server
+  // asks, so what is shown and what is allowed cannot drift apart.
+  const actor = await requireActor()
+  const items = navigationFor(actor).map((entry) => ({
+    key: entry.key,
+    href: entry.href,
+    label: t(entry.key),
+    primary: entry.primary === true,
+  }))
+
   return (
     <AppShell
       organizations={organizations}
       activeOrganizationId={active?.organizationId ?? ''}
+      items={items}
       labels={{
-        home: t('home'),
-        team: t('team'),
-        settings: t('settings'),
+        mainNavigation: t('mainNavigation'),
         switchOrganization: t('switchOrganization'),
+        commandPalette: t('commandPalette'),
+        commandPaletteHint: t('commandPaletteHint'),
+        noResults: t('noResults'),
       }}
     >
       {props.children}

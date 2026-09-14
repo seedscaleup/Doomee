@@ -102,15 +102,21 @@ et sur une violation de frontière de module. L'image Docker démarre et répond
 
 ## LOT 2 — Design system & shell applicatif
 1. Jetons, typographie, échelle d'espacement, rayons, ombres, états de focus.
-2. Primitives shadcn/ui retenues (bouton, champ, select, dialog, sheet, tabs, toast, popover, calendrier…).
+2. Primitives possédées (bouton, champ, select, modale) — philosophie shadcn, substrat `<dialog>` natif (ADR-031).
 3. `components/patterns` : `PageHeader`, `EmptyState`, `StatusBadge`, `PriorityChip`, `ProgressRing`,
-   `MetricTile`, `DeltaIndicator`, `DataTable`, `FilterBar`, `SheetForm`, `ConfirmDialog`, `AvatarStack`, `Timeline`.
+   `DataTable`, `FilterBar`, `SheetForm`, `ConfirmDialog`, `AvatarStack`, `Timeline`.
 4. `AppShell` : navigation **calculée depuis les permissions**, barre inférieure mobile, palette de commandes (`⌘K`).
-5. `PortalShell` : coquille distincte pour le client, plus sobre, plus grande.
-6. Sélecteur de langue, formats `Intl`, états de chargement (squelettes), gestion d'erreur localisée.
-7. Page de style interne `/dev/design` listant tous les composants (revue visuelle).
+5. Sélecteur de langue, formats `Intl` (fuseau et devise), squelettes, frontière d'erreur localisée.
+6. Page de revue visuelle `/dev/design` listant tous les composants.
+7. Contraste de la palette **vérifié par un test** lisant `globals.css` (ADR-032) + scan `axe` en E2E.
 
-✅ **Sortie** : un écran type se compose sans écrire de CSS. Respect de la règle du jaune vérifié à l'œil.
+**Reportés, avec leur premier appelant réel** — un composant naît à sa troisième occurrence, pas à sa
+première supposition (`CLAUDE.md` règle 8) :
+- `MetricTile`, `DeltaIndicator` → **LOT 7** (résultats et écarts aux objectifs) ;
+- `PortalShell` → **LOT 9**, avec les routes du portail. Une coquille sans route n'est testable par rien.
+
+✅ **Sortie** : un écran type se compose sans écrire de CSS. Zéro violation `axe` sur tous les écrans
+existants, galerie comprise. Respect de la règle du jaune vérifiable sur `/dev/design`.
 
 ---
 

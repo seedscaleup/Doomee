@@ -1,29 +1,91 @@
 @import "tailwindcss";
 
 /**
- * Doomee design tokens — the single source of truth for colour.
- * CLAUDE.md rule: never hard-code a colour in a component (D4).
+ * Doomee design tokens — the single source of truth for the visual system.
+ * CLAUDE.md rule: never hard-code a colour, radius or shadow in a component.
  *
- * Yellow is the ACTION colour. One dominant yellow element per screen,
- * never as a large background, and always with #111111 text on top.
+ * Yellow is the ACTION colour. One dominant yellow element per screen, never
+ * as a large background, and always with #111111 text on top — #FFD21F with
+ * white text fails contrast badly, with black it passes AAA.
  */
 @theme {
+  /* --- Brand ------------------------------------------------------------ */
   --color-doomee-yellow: #ffd21f;
+  --color-doomee-yellow-soft: #fff4c7;
   --color-doomee-black: #111111;
 
+  /* --- Surfaces --------------------------------------------------------- */
   --color-background: #fafaf7;
   --color-surface: #ffffff;
+  --color-surface-sunken: #f4f4f0;
   --color-border: #e8e8e3;
+  /* Dark enough to read as a real boundary, e.g. the dashed empty-state box. */
+  --color-border-strong: #9c9c93;
 
-  --color-success: #22a06b;
-  --color-danger: #e5484d;
-  --color-warning: #f59e0b;
-
+  /* --- Text ------------------------------------------------------------- */
+  /* Both pass WCAG AA (4.5:1) on every surface. Verified by a test, not by eye. */
   --color-muted: #6b6b66;
+  --color-subtle: #6d6d66;
 
+  /*
+   * --- Semantic ---------------------------------------------------------
+   *
+   * The brand colours are the ones the cahier des charges specifies, and they
+   * stay exactly as specified. They clear 3:1, which is the bar for a fill, a
+   * border, a dot or a ring — not the 4.5:1 a piece of TEXT needs. #F59E0B on
+   * the background is 2.05:1; as a warning dot that is fine, as warning text it
+   * is unreadable.
+   *
+   * So each one has a darker -text sibling. Fills use the brand colour, text
+   * uses the sibling, and nobody has to remember which is which because the
+   * contrast test fails if they are swapped.
+   */
+  --color-success: #22a06b;
+  --color-success-soft: #e7f5ee;
+  --color-success-text: #177552;
+  --color-danger: #e5484d;
+  --color-danger-soft: #fdeaea;
+  --color-danger-text: #c0272c;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fef4e2;
+  --color-warning-text: #b45309;
+  --color-info: #3b82f6;
+  --color-info-soft: #e8f0fe;
+  --color-info-text: #2563eb;
+
+  /* --- Shape ------------------------------------------------------------ */
   --radius-doomee: 12px;
+  --radius-doomee-sm: 8px;
+  --radius-doomee-lg: 16px;
+  --radius-doomee-full: 9999px;
 
+  /* Soft and low: Doomee is flat, not glossy. */
+  --shadow-doomee: 0 1px 2px rgb(17 17 17 / 0.04), 0 2px 8px rgb(17 17 17 / 0.04);
+  --shadow-doomee-lifted: 0 4px 12px rgb(17 17 17 / 0.08), 0 12px 32px rgb(17 17 17 / 0.08);
+
+  /* --- Typography ------------------------------------------------------- */
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* 16px base: anything smaller triggers zoom-on-focus on iOS. */
+  --text-display: 2rem;
+  --text-display--line-height: 1.15;
+  --text-display--font-weight: 700;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.25;
+  --text-title--font-weight: 700;
+  --text-section: 1.125rem;
+  --text-section--line-height: 1.35;
+  --text-section--font-weight: 600;
+  --text-label: 0.875rem;
+  --text-label--line-height: 1.4;
+  --text-label--font-weight: 500;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+
+  /* --- Interaction ------------------------------------------------------ */
+  /* 44px: the minimum comfortable touch target (CLAUDE.md rule 9). */
+  --spacing-touch: 2.75rem;
 }
 
 @layer base {
@@ -42,9 +104,53 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Accessibility: focus must always be visible (AA baseline). */
+  /* Accessibility: focus must always be visible, on every control. */
   :focus-visible {
     outline: 2px solid var(--color-doomee-black);
     outline-offset: 2px;
+    border-radius: var(--radius-doomee-sm);
+  }
+
+  /*
+   * Respect a stated preference for less movement. !important is correct here
+   * and nowhere else: this reset has to win over any animation a component
+   * declares, and a user who asked for less motion should always get it.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    /* biome-ignore-start lint/complexity/noImportantStyles: an accessibility reset must override component styles */
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    /* biome-ignore-end lint/complexity/noImportantStyles: end of the accessibility reset */
+  }
+
+  /* Native <dialog> gives focus trapping and Esc for free (ADR-031). */
+  dialog::backdrop {
+    background: rgb(17 17 17 / 0.35);
+  }
+
+  dialog {
+    max-width: 100vw;
+    max-height: 100dvh;
+  }
+}
+
+@layer utilities {
+  /* Visible to screen readers, invisible on screen. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
   }
 }
