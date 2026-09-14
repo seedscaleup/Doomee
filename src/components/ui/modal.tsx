@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -27,6 +27,12 @@ export function Modal({
   variant?: 'center' | 'sheet'
 }) {
   const ref = useRef<HTMLDialogElement>(null)
+  // Several modals live in the same page at once — a form sheet, a confirmation,
+  // the command palette. A fixed id="modal-title" made every one of them point
+  // at whichever modal came first in the document, so they all announced the
+  // same name. useId gives each instance its own.
+  const titleId = useId()
+  const descriptionId = useId()
 
   useEffect(() => {
     const dialog = ref.current
@@ -40,8 +46,8 @@ export function Modal({
     // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click closes it; Escape does the same, natively
     <dialog
       ref={ref}
-      aria-labelledby="modal-title"
-      aria-describedby={description ? 'modal-description' : undefined}
+      aria-labelledby={titleId}
+      aria-describedby={description ? descriptionId : undefined}
       // Escape and backdrop dismissal both route through the same handler, so
       // the parent's state can never disagree with what is on screen.
       onClose={onClose}
@@ -60,11 +66,11 @@ export function Modal({
     >
       <div className="flex max-h-[85dvh] flex-col gap-4 overflow-y-auto p-5">
         <div className="flex flex-col gap-1">
-          <h2 id="modal-title" className="text-section">
+          <h2 id={titleId} className="text-section">
             {title}
           </h2>
           {description ? (
-            <p id="modal-description" className="text-label text-muted">
+            <p id={descriptionId} className="text-label text-muted">
               {description}
             </p>
           ) : null}

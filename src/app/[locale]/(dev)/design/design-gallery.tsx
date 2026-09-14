@@ -17,7 +17,7 @@ import {
   Timeline,
 } from '@/components/patterns'
 import { Alert, Button, Field, Select, TextInput } from '@/components/ui/field'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, SkeletonList } from '@/components/ui/skeleton'
 
 type DemoRow = { id: string; name: string; status: string; owner: string }
 
@@ -197,9 +197,15 @@ export function DesignGallery() {
       </Section>
 
       <Section title={t('sections.loading')}>
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-16 w-full" />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+          {/* The fallback for an in-page <Suspense>, which is where waiting is
+              shown now that no route-level loading.tsx sits above a page that
+              can answer 404 (ADR-033). */}
+          <SkeletonList rows={2} label={tCommon('loading')} />
         </div>
       </Section>
     </div>

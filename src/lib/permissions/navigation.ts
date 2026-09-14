@@ -51,7 +51,7 @@ export const NAV_ENTRIES: readonly NavEntry[] = [
     primary: true,
     planned: true,
   },
-  { key: 'clients', href: '/app/clients', permission: 'client.create', planned: true },
+  { key: 'clients', href: '/app/clients', permission: 'client.create' },
   { key: 'results', href: '/app/results', permission: 'result.read', planned: true },
   { key: 'insights', href: '/app/insights', permission: 'insight.read', planned: true },
   { key: 'reports', href: '/app/reports', permission: 'report.read', planned: true },

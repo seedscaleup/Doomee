@@ -24,3 +24,32 @@ export const subscriptionStatus = pgEnum('subscription_status', [
   'past_due',
   'cancelled',
 ])
+
+export const clientStatus = pgEnum('client_status', ['prospect', 'active', 'paused', 'archived'])
+
+/**
+ * Who a row is for. `internal` is the default everywhere: a client sees
+ * something only after a deliberate act (ADR-017).
+ */
+export const visibility = pgEnum('visibility', ['internal', 'shared'])
+
+/**
+ * The entities an activity event, a comment or an attachment can point at.
+ *
+ * Declared in full now, including the ones later lots introduce: adding a value
+ * to a PostgreSQL enum is a migration, and doing it once beats doing it eight
+ * times. An unused value costs nothing.
+ */
+export const entityType = pgEnum('entity_type', [
+  'client',
+  'project',
+  'action',
+  'objective',
+  'deliverable',
+  'result',
+  'insight',
+  'report',
+  'risk',
+  'meeting',
+  'milestone',
+])

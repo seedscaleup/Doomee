@@ -9,7 +9,7 @@ import {
   startTestDatabase,
   type TestDatabase,
 } from '../helpers/database'
-import { NON_TENANT_TABLES } from '../helpers/non-tenant-tables'
+import { NON_TENANT_TABLES, SHARED_TAXONOMY_TABLES } from '../helpers/non-tenant-tables'
 
 /**
  * BEHAVIOURAL GUARD — the one that matters commercially.
@@ -66,7 +66,58 @@ const FIXTURES: Record<string, Fixture> = {
       return id
     },
   },
+  clients: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      await query('INSERT INTO clients (id, organization_id, name, slug) VALUES ($1, $2, $3, $4)', [
+        id,
+        organizationId,
+        `Client ${id}`,
+        `client-${id}`,
+      ])
+      return id
+    },
+  },
+  client_contacts: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const clientId = await FIXTURES.clients?.seed(query, organizationId)
+      await query(
+        `INSERT INTO client_contacts (id, organization_id, client_id, name, email)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [id, organizationId, clientId, 'Contact', `contact-${id}@example.test`],
+      )
+      return id
+    },
+  },
+  client_user_access: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const clientId = await FIXTURES.clients?.seed(query, organizationId)
+      const userId = await seedUser(query, `portal-${id}@example.test`)
+      await query(
+        `INSERT INTO client_user_access (id, organization_id, user_id, client_id)
+         VALUES ($1, $2, $3, $4)`,
+        [id, organizationId, userId, clientId],
+      )
+      return id
+    },
+  },
+  activity_events: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      await query(
+        `INSERT INTO activity_events (id, organization_id, verb, entity_type, entity_id)
+         VALUES ($1, $2, 'client.created', 'client', $3)`,
+        [id, organizationId, newId()],
+      )
+      return id
+    },
+  },
 }
+
+/** Tables no role may rewrite, so the isolation matrix asserts denial instead. */
+const APPEND_ONLY = new Set(['activity_events'])
 
 /** Drizzle wraps driver errors; the useful message is on the cause. */
 function pgMessage(error: unknown): string {
@@ -110,6 +161,7 @@ describe('tenant isolation', () => {
     const missing = rows
       .map((row) => row.tablename)
       .filter((table) => !NON_TENANT_TABLES.has(table))
+      .filter((table) => !SHARED_TAXONOMY_TABLES.has(table))
       .filter((table) => !(table in FIXTURES))
 
     expect(missing, 'Add a fixture so this table is covered by the isolation matrix').toEqual([])
@@ -136,11 +188,23 @@ describe('tenant isolation', () => {
     })
 
     it('org B cannot UPDATE a row of org A', async () => {
+      if (APPEND_ONLY.has(table)) {
+        // No role may update it at all, which is a stronger guarantee than
+        // "another tenant may not".
+        const error = await withTenant({ organizationId: orgA.id }, (tx) =>
+          tx.execute(sql.raw(`UPDATE ${table} SET organization_id = organization_id`)),
+        ).catch((caught: unknown) => caught)
+        expect(pgMessage(error)).toMatch(/permission denied/i)
+        return
+      }
+
       const rowId = rowsA.get(table)
+      // A no-op self-assignment, because not every table has updated_at. What
+      // is being tested is whether the row is REACHABLE, not what changes.
       const result = await withTenant({ organizationId: orgB.id }, (tx) =>
         tx.execute(
           sql.raw(
-            `UPDATE ${table} SET updated_at = now() WHERE ${idColumn} = '${rowId}' RETURNING ${idColumn}`,
+            `UPDATE ${table} SET ${tenantColumn} = ${tenantColumn} WHERE ${idColumn} = '${rowId}' RETURNING ${idColumn}`,
           ),
         ),
       )
@@ -148,6 +212,14 @@ describe('tenant isolation', () => {
     })
 
     it('org B cannot DELETE a row of org A', async () => {
+      if (APPEND_ONLY.has(table)) {
+        const error = await withTenant({ organizationId: orgA.id }, (tx) =>
+          tx.execute(sql.raw(`DELETE FROM ${table}`)),
+        ).catch((caught: unknown) => caught)
+        expect(pgMessage(error)).toMatch(/permission denied/i)
+        return
+      }
+
       const rowId = rowsA.get(table)
       const result = await withTenant({ organizationId: orgB.id }, (tx) =>
         tx.execute(
@@ -390,5 +462,96 @@ describe('cross-tenant lookup (migration 0003)', () => {
     await expect(withUserLookup("' OR '1'='1", async () => 'reached')).rejects.toThrow(
       /valid user id/,
     )
+  })
+})
+
+/**
+ * industries is the one table that crosses the tenant boundary on purpose, so
+ * it gets its own tests rather than an exemption. Seeded system rows are shared
+ * — that is what a reference table is for — and an organisation's own entries
+ * are not.
+ */
+describe('shared taxonomy (industries)', () => {
+  let db: TestDatabase
+  let admin: Client
+  let orgA: { id: string; slug: string }
+  let orgB: { id: string; slug: string }
+  let systemRow: string
+  let orgARow: string
+
+  const query = (text: string, params?: unknown[]) => admin.query(text, params)
+
+  beforeAll(async () => {
+    db = await startTestDatabase()
+    admin = new Client({ connectionString: db.adminUrl })
+    await admin.connect()
+
+    orgA = await seedOrganization(query, 'tax-a')
+    orgB = await seedOrganization(query, 'tax-b')
+
+    systemRow = newId()
+    await query(
+      `INSERT INTO industries (id, organization_id, code, labels)
+       VALUES ($1, NULL, $2, '{"fr":"Distribution","en":"Retail"}'::jsonb)`,
+      [systemRow, `retail-${systemRow}`],
+    )
+
+    orgARow = newId()
+    await query(
+      `INSERT INTO industries (id, organization_id, code, labels)
+       VALUES ($1, $2, $3, '{"fr":"Secteur maison","en":"House sector"}'::jsonb)`,
+      [orgARow, orgA.id, `custom-${orgARow}`],
+    )
+  }, 180_000)
+
+  afterAll(async () => {
+    await admin?.end()
+    await db?.stop()
+  })
+
+  it('shows seeded system entries to every organisation', async () => {
+    for (const org of [orgA, orgB]) {
+      const found = await withTenant({ organizationId: org.id }, (tx) =>
+        tx.execute(sql.raw(`SELECT id FROM industries WHERE id = '${systemRow}'`)),
+      )
+      expect(found.rows).toHaveLength(1)
+    }
+  })
+
+  it("hides one organisation's own entries from another", async () => {
+    const fromB = await withTenant({ organizationId: orgB.id }, (tx) =>
+      tx.execute(sql.raw(`SELECT id FROM industries WHERE id = '${orgARow}'`)),
+    )
+    expect(fromB.rows).toEqual([])
+  })
+
+  it('lets an organisation see its own entries', async () => {
+    const fromA = await withTenant({ organizationId: orgA.id }, (tx) =>
+      tx.execute(sql.raw(`SELECT id FROM industries WHERE id = '${orgARow}'`)),
+    )
+    expect(fromA.rows).toHaveLength(1)
+  })
+
+  it('refuses to let an organisation edit a system entry', async () => {
+    // Shared means shared: readable by all, owned by none.
+    const result = await withTenant({ organizationId: orgA.id }, (tx) =>
+      tx.execute(
+        sql.raw(`UPDATE industries SET is_active = false WHERE id = '${systemRow}' RETURNING id`),
+      ),
+    )
+    expect(result.rows).toEqual([])
+  })
+
+  it('refuses to let an organisation create an entry for another', async () => {
+    const error = await withTenant({ organizationId: orgB.id }, (tx) =>
+      tx.execute(
+        sql.raw(
+          `INSERT INTO industries (id, organization_id, code, labels)
+           VALUES ('${newId()}', '${orgA.id}', 'stolen', '{}'::jsonb)`,
+        ),
+      ),
+    ).catch((caught: unknown) => caught)
+
+    expect(pgMessage(error)).toMatch(/row-level security|violates/i)
   })
 })

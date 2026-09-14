@@ -29,10 +29,10 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | **LOT 2 terminé et vérifié** — `pnpm verify` vert |
+| **Phase actuelle** | **LOT 3 en cours** — clients, contacts et historique livrés et vérifiés ; `pnpm verify` vert |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | Design system : jetons, 11 composants, navigation dérivée des permissions, palette `⌘K`, formats `Intl`, scan `axe` |
-| **Prochaine étape** | **LOT 3 — clients** |
+| **Dernier jalon** | Domaine client : `clients` · `client_contacts` · `client_user_access` · `industries` · `activity_events`, RLS et isolation générée, CRUD + recherche insensible aux accents, fiche à onglets, `Timeline` |
+| **Reste au LOT 3** | Logo client (`files` + `StorageAdapter`) · invitation d'un contact au portail + contact multi-comptes (ADR-023) |
 | **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md` |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
@@ -252,6 +252,8 @@ pnpm verify           # tout, dans l'ordre de la CI
 | ❌ Importer un SDK d'hébergeur dans un module | → `src/lib/storage` ou `src/lib/mail`, derrière une interface (ADR-021) |
 | ❌ `UNIQUE` sur l'e-mail d'un contact client | → un contact couvre plusieurs clients et plusieurs organisations (ADR-023) |
 | ❌ Une route en Edge Runtime | → Node.js uniquement, sinon la portabilité est perdue (ADR-021) |
+| ❌ Un `loading.tsx` au-dessus d'une page qui peut faire `notFound()` | → la coquille part avant le rendu : `notFound()` répond **200**, et une écriture sur deux n'apparaît pas. `<Suspense>` **dans** la page (ADR-033) |
+| ❌ Un `id` en dur dans un composant réutilisable | → deux instances sur la même page et `aria-labelledby` pointe vers la mauvaise (ADR-034) |
 | ❌ Un composant client qui importe le barrel d'un module | → importer `mutations.ts` ou `service.ts` (ADR-030) |
 | ❌ Membre `INHERIT` de `app_user` et `app_portal` | → `NOINHERIT`, sinon union des politiques RLS (ADR-029) |
 | ❌ Une page qui appelle `requireSession()` directement | → `requirePageSession(locale)` : layout et page rendent en parallèle |

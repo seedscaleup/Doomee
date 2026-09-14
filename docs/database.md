@@ -245,11 +245,28 @@ Les métriques calculées sont dérivées **à la lecture** par le service `metr
 
 ## 6. Domaine — Cœur métier
 
+### `industries` — secteurs d'activité *(table de référence, ADR-010)*
+`id` · `organization_id` **NULL = entrée système** · `code` · `labels jsonb {fr,en}` ·
+`sort_order` · `is_active`
+**UNIQUE (coalesce(organization_id, uuid zéro), code)**
+
+> Le secteur d'un client est une **classification**, donc une table, pas un enum et pas une chaîne
+> libre (règle 7). Les entrées système sont posées par `pnpm db:seed` et lisibles par toutes les
+> organisations ; une organisation peut ajouter les siennes sans déploiement. Les libellés sont
+> **dans la ligne**, jamais dans les catalogues i18n : c'est de la donnée.
+>
+> RLS : `organization_id IS NULL OR organization_id = <org courante>` en lecture ; en écriture,
+> l'organisation courante seulement — personne ne modifie une entrée système depuis l'application.
+
 ### `clients`
-`id` · `organization_id` · `name` · `slug` · `logo_file_id` · `industry text` · `description text` ·
-`website` · `email` · `phone` · `address` · `status client_status` · `owner_user_id` *(responsable interne)* ·
-`account_team_note text` · `created_by` `updated_by` · `created_at` `updated_at` `deleted_at`
+`id` · `organization_id` · `name` · `slug` · `logo_file_id` · `industry_id` FK NULL → `industries` ·
+`description text` · `website` · `email` · `phone` · `address` · `status client_status` ·
+`owner_user_id` *(responsable interne)* · `account_team_note text` · `created_by` `updated_by` ·
+`created_at` `updated_at` `deleted_at`
 **UNIQUE (organization_id, slug)** · **UNIQUE (organization_id, id)**
+
+> `slug` est dérivé du nom et unique par organisation ; la création réessaie avec un suffixe plutôt
+> que d'imposer le champ à l'utilisateur (règle 10, *less typing*).
 
 ### `client_contacts`
 `id` · `organization_id` · `client_id` · `name` · `email` · `phone` · `job_title` ·

@@ -5,17 +5,20 @@ import { cn } from '@/lib/utils'
 /**
  * One list component for every list screen.
  *
- * The value it carries is not the markup, it is the RESPONSIVE behaviour: a
- * table on a wide screen, a stack of cards on a phone, from a single column
- * description. Written once here, every list gets it; written per screen, half
- * of them would quietly overflow at 375px.
+ * ONE table, one DOM node per row. An earlier version rendered the rows twice —
+ * a card list for phones and a table for wider screens — which doubled the
+ * content for a screen reader, doubled every text match in a test, and meant
+ * `.first()` could land on the copy that happened to be hidden.
+ *
+ * Instead: a real table that keeps its semantics at every width, secondary
+ * columns dropped on narrow screens, and horizontal scrolling confined to the
+ * table's own container so the page itself never scrolls sideways.
  */
 export type Column<Row> = {
   key: string
   header: string
-  /** Rendered in both layouts. */
   cell: (row: Row) => React.ReactNode
-  /** Hidden on phones, where only the essentials fit. */
+  /** Dropped on phones, where only the essentials fit. */
   secondary?: boolean
   align?: 'start' | 'end'
 }
@@ -40,82 +43,67 @@ export function DataTable<Row>({
 }) {
   if (rows.length === 0 && emptyState) return <>{emptyState}</>
 
-  const primary = columns.filter((column) => !column.secondary)
-
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
-      {/* Phones: one card per row, primary columns only. */}
-      <ul className="flex flex-col gap-2 sm:hidden">
-        {rows.map((row) => (
-          <li key={getRowKey(row)}>
-            <RowShell onClick={onRowClick ? () => onRowClick(row) : undefined}>
-              <span className="flex min-w-0 flex-col gap-1">
-                {primary.map((column) => (
-                  <span key={column.key} className="min-w-0 truncate">
-                    {column.cell(row)}
-                  </span>
-                ))}
-              </span>
-            </RowShell>
-          </li>
-        ))}
-      </ul>
-
-      {/* Wider screens: a real table, so columns line up and can be scanned. */}
-      <div className="hidden overflow-x-auto sm:block">
-        <table className="w-full border-collapse text-label">
-          <caption className="sr-only">{caption}</caption>
-          <thead>
-            <tr className="border-b border-border text-caption uppercase tracking-wide text-muted">
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  scope="col"
-                  className={cn('px-3 py-2 font-medium', column.align === 'end' && 'text-right')}
-                >
-                  {column.header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr
-                key={getRowKey(row)}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
+    <div className={cn('w-full overflow-x-auto', className)}>
+      <table className="w-full border-collapse text-label">
+        <caption className="sr-only">{caption}</caption>
+        <thead>
+          <tr className="border-b border-border text-caption uppercase tracking-wide text-muted">
+            {columns.map((column) => (
+              <th
+                key={column.key}
+                scope="col"
                 className={cn(
-                  'border-b border-border last:border-0',
-                  onRowClick && 'cursor-pointer hover:bg-surface-sunken',
+                  'px-3 py-2 text-left font-medium',
+                  column.align === 'end' && 'text-right',
+                  column.secondary && 'hidden sm:table-cell',
                 )}
               >
-                {columns.map((column) => (
-                  <td
-                    key={column.key}
-                    className={cn('px-3 py-3', column.align === 'end' && 'text-right')}
-                  >
-                    {column.cell(row)}
-                  </td>
-                ))}
-              </tr>
+                {column.header}
+              </th>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr
+              key={getRowKey(row)}
+              className={cn(
+                'border-b border-border last:border-0',
+                onRowClick && 'hover:bg-surface-sunken',
+              )}
+            >
+              {columns.map((column, index) => (
+                <td
+                  key={column.key}
+                  className={cn(
+                    'px-3 py-0',
+                    column.align === 'end' && 'text-right',
+                    column.secondary && 'hidden sm:table-cell',
+                  )}
+                >
+                  {/*
+                    A clickable row must be reachable by keyboard, and a <tr>
+                    with an onClick is not. The first cell carries a real button
+                    that fills the row; the rest are plain content.
+                  */}
+                  {onRowClick && index === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => onRowClick(row)}
+                      className="flex min-h-touch w-full items-center py-2 text-left"
+                    >
+                      {column.cell(row)}
+                    </button>
+                  ) : (
+                    <span className="flex min-h-touch items-center py-2">{column.cell(row)}</span>
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
-  )
-}
-
-function RowShell({ onClick, children }: { onClick?: () => void; children: React.ReactNode }) {
-  const className =
-    'flex w-full min-h-touch items-center gap-3 rounded-doomee border border-border bg-surface px-3 py-3 text-left'
-
-  // A clickable row must be a real button: a div with onClick is invisible to
-  // the keyboard and to assistive technology.
-  return onClick ? (
-    <button type="button" onClick={onClick} className={className}>
-      {children}
-    </button>
-  ) : (
-    <div className={className}>{children}</div>
   )
 }

@@ -749,6 +749,74 @@ illisible pour tout le monde ; seul un test attrape ça.
 
 ---
 
+<a id="adr-033"></a>
+## ADR-033 — Pas de `loading.tsx` au-dessus d'une page qui peut répondre 404
+
+**Statut** : Accepté · **Date** : 2026-09-14 · **Lot** : 3
+
+**Contexte.** Le groupe de routes `(app)` portait un `loading.tsx` : un squelette
+affiché pendant le rendu de n'importe quel écran interne. C'était l'application du
+principe UX « Show progress » au niveau du routeur.
+
+Deux défauts **mesurés** en fin de LOT 3, tous deux causés par ce seul fichier :
+
+1. **Une écriture sur deux n'était pas visible.** Après création d'un client, la
+   liste continuait d'afficher l'état vide. La donnée était bien écrite — un
+   rechargement complet de la page la montrait — mais l'arbre rafraîchi n'était
+   pas appliqué. Reproduit 10 fois : 4 à 6 échecs ; le fichier retiré : 10/10.
+2. **`notFound()` répondait 200.** Un `loading.tsx` crée une frontière Suspense :
+   Next diffuse la coquille de la page *avant* que le rendu ne se termine, donc
+   le statut HTTP est déjà parti quand `notFound()` s'exécute. Un client atteignant
+   l'URL interne d'une autre organisation recevait bien la page 404, mais avec un
+   code 200 — ce qui contredit la règle « 404, jamais 403 » à l'endroit où elle se
+   vérifie : le statut.
+
+**Décision.** Aucun `loading.tsx` au niveau d'un segment de route qui contient des
+pages capables de répondre `notFound()` — c'est-à-dire, en pratique, aucun dans
+`(app)`.
+
+L'attente se montre **à l'intérieur de la page**, avec un `<Suspense>` autour de la
+section réellement lente (un tableau de bord, un graphique), une fois la coquille
+rendue et le statut HTTP déjà décidé. `SkeletonList` reste le repli prévu pour ces
+frontières ; il est exercé dans la galerie de composants pour ne pas dériver.
+
+**Conséquences.**
+- Le principe « Show progress » n'est pas abandonné, il est déplacé là où il ne
+  coûte ni la fraîcheur d'une écriture ni un code de statut.
+- Les tests `tests/e2e/clients.spec.ts` (« one organisation never sees another
+  organisation clients » et « refuses a client id that does not exist ») vérifient
+  le statut `404` lui-même, pas seulement le contenu de la page : c'est ce qui
+  empêche la régression.
+- Une alternative examinée et écartée : appeler `revalidatePath()` dans
+  `defineAction`. Mesurée, elle ne corrigeait pas le défaut 1 (la frontière
+  Suspense en était la cause, pas le mécanisme de rafraîchissement) et n'aurait
+  rien fait pour le défaut 2. Ajouter un mécanisme qui ne répare rien aurait
+  seulement masqué la cause.
+
+---
+
+<a id="adr-034"></a>
+## ADR-034 — Une modale nomme son titre avec un identifiant unique
+
+**Statut** : Accepté · **Date** : 2026-09-14 · **Lot** : 3
+
+**Contexte.** `Modal` écrivait `aria-labelledby="modal-title"` en dur. Dès qu'une
+page monte plusieurs modales — une fiche d'édition, une confirmation, la palette de
+commandes, ce qui est déjà le cas de la fiche client — toutes pointaient vers le
+**premier** `#modal-title` du document. Les trois dialogues s'annonçaient donc sous
+le même nom, celui d'une modale sans rapport.
+
+**Décision.** `useId()` pour le titre et pour la description. Chaque instance porte
+ses propres identifiants.
+
+**Conséquences.** Le nom accessible d'un dialogue redevient son titre, ce qui rend
+`getByRole('dialog', { name })` utilisable — les tests s'en servent pour distinguer
+deux boutons « Archiver », celui qui ouvre la confirmation et celui qui la valide.
+Un identifiant en dur dans un composant réutilisable est désormais à traiter comme
+un bug d'accessibilité, pas comme un détail.
+
+---
+
 ## Décisions tranchées avec le commanditaire — 2026-09-14
 
 | # | Sujet | Décision | ADR |

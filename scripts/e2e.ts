@@ -14,6 +14,7 @@ import { join } from 'node:path'
 import { PostgreSqlContainer } from '@testcontainers/postgresql'
 import { runMigrations } from '../src/db/migrate'
 import { provisionAppRole } from '../src/db/provision'
+import { seedSystemData } from '../src/db/seed'
 
 const APP_ROLE = 'doomee_app'
 const APP_PASSWORD = 'e2e-password-doomee'
@@ -35,6 +36,7 @@ async function main(): Promise<number> {
     const adminUrl = container.getConnectionUri()
     await runMigrations(adminUrl)
     await provisionAppRole({ adminUrl, loginRole: APP_ROLE, password: APP_PASSWORD })
+    await seedSystemData(adminUrl)
 
     const appUrl = adminUrl.replace('doomee:doomee@', `${APP_ROLE}:${APP_PASSWORD}@`)
 
@@ -55,6 +57,7 @@ async function main(): Promise<number> {
         // component at once, so it has to render in the production build the
         // suite runs against.
         ENABLE_DEV_PAGES: 'true',
+        LOG_LEVEL: process.env.LOG_LEVEL ?? 'warn',
       },
     })
 

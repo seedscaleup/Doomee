@@ -33,7 +33,10 @@
     "slug_taken": "That identifier is already taken.",
     "already_member": "That person is already part of the organisation.",
     "invitation_invalid": "This invitation is invalid or has expired.",
-    "seats_exhausted": "Your subscription has no seat left."
+    "seats_exhausted": "Your subscription has no seat left.",
+    "invalid_transition": "That status change is not possible.",
+    "contact_exists": "That contact already exists for this client.",
+    "has_active_projects": "This client still has active projects."
   },
   "notFound": {
     "title": "Page not found",
@@ -290,6 +293,12 @@
       "invited": "Invited",
       "active": "Active",
       "suspended": "Deactivated"
+    },
+    "client": {
+      "prospect": "Prospect",
+      "active": "Active",
+      "paused": "Paused",
+      "archived": "Archived"
     }
   },
   "priority": {
@@ -302,5 +311,81 @@
     "low": "Low",
     "medium": "Medium",
     "critical": "Critical"
+  },
+  "clients": {
+    "title": "Clients",
+    "description": "Your client accounts, their contacts and their history.",
+    "new": "New client",
+    "searchPlaceholder": "Search for a client",
+    "statusFilter": "Status",
+    "emptyTitle": "No clients yet",
+    "emptyDescription": "Create your first client to start tracking their work and results.",
+    "noResultsTitle": "No client matches",
+    "noResultsDescription": "Try another term or change the status filter.",
+    "columns": {
+      "name": "Client",
+      "status": "Status",
+      "industry": "Sector",
+      "owner": "Owner",
+      "contacts": "Contacts"
+    },
+    "form": {
+      "createTitle": "New client",
+      "editTitle": "Edit client",
+      "name": "Client name",
+      "industry": "Sector",
+      "status": "Status",
+      "description": "Description",
+      "website": "Website",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "owner": "Internal owner",
+      "accountTeamNote": "Internal note",
+      "accountTeamNoteHint": "Never visible to the client.",
+      "noIndustry": "Not set",
+      "failed": "Could not save this client.",
+      "created": "Client created.",
+      "updated": "Changes saved."
+    },
+    "tabs": {
+      "overview": "Details",
+      "contacts": "Contacts",
+      "activity": "History"
+    },
+    "contacts": {
+      "title": "Contacts",
+      "add": "Add a contact",
+      "name": "Name",
+      "email": "Email",
+      "jobTitle": "Job title",
+      "primary": "Primary contact",
+      "primaryBadge": "Primary",
+      "portalAccess": "Portal access",
+      "noPortalAccess": "Not invited yet",
+      "emptyTitle": "No contacts",
+      "emptyDescription": "Add the person you actually talk to at this client.",
+      "added": "Contact added.",
+      "failed": "Could not add this contact."
+    },
+    "activity": {
+      "emptyTitle": "No activity",
+      "emptyDescription": "The history fills up as work happens on this client."
+    },
+    "archive": {
+      "action": "Archive",
+      "title": "Archive this client?",
+      "description": "It will drop out of the active lists. Its data is kept.",
+      "confirm": "Archive"
+    }
+  },
+  "activity": {
+    "client": {
+      "created": "{actor} created the client {name}",
+      "updated": "{actor} updated {name}",
+      "archived": "{actor} archived {name}",
+      "contact_added": "{actor} added the contact {name}"
+    },
+    "unknownActor": "Someone"
   }
 }

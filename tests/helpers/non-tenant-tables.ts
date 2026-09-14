@@ -17,3 +17,11 @@ export const NON_TENANT_TABLES = new Map<string, string>([
 
 /** Identity tables the application role must not be able to touch at all. */
 export const IDENTITY_TABLES = ['sessions', 'accounts', 'verifications', 'rate_limits']
+
+/**
+ * Reference tables whose SYSTEM rows (organization_id IS NULL) are deliberately
+ * readable by every organisation — that is what a seeded taxonomy is for. Their
+ * organisation-owned rows are still private, and tenant-isolation.test.ts
+ * asserts both halves separately.
+ */
+export const SHARED_TAXONOMY_TABLES = new Set(['industries'])
