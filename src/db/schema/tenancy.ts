@@ -106,6 +106,17 @@ export const invitations = pgTable(
     organizationId: uuid('organization_id')
       .notNull()
       .references(() => organizations.id, { onDelete: 'cascade' }),
+    /**
+     * Set when the invitation is for a client contact rather than a colleague:
+     * accepting it grants access to THIS client account and no other.
+     *
+     * The composite foreign key (organization_id, client_id) -> clients is
+     * declared in the 0007 migration instead of here. `clients` imports this
+     * file for `organizations`, so declaring it here would close the cycle;
+     * the constraint exists in the database either way, and the isolation
+     * suite checks it.
+     */
+    clientId: uuid('client_id'),
     email: citext('email').notNull(),
     role: orgRole('role').notNull(),
     /** Only the hash is stored: a leaked backup must not grant access. */

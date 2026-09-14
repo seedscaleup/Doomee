@@ -96,6 +96,11 @@
       "subject": "{organization} vous invite sur doomee",
       "body": "{inviter} vous invite à rejoindre {organization} sur doomee. L'invitation expire dans sept jours.",
       "cta": "Rejoindre l'équipe"
+    },
+    "portalInvitation": {
+      "subject": "{organization} vous ouvre l'accès à votre espace client",
+      "body": "{inviter} vous donne accès au suivi de « {client} » sur doomee : l'avancement, les livrables et les résultats, au fur et à mesure. L'invitation expire dans sept jours.",
+      "cta": "Ouvrir mon accès"
     }
   },
   "auth": {
@@ -202,7 +207,10 @@
     "body": "Vous avez été invité à rejoindre cette organisation sur doomee.",
     "accept": "Accepter l'invitation",
     "invalid": "Cette invitation est invalide ou a expiré.",
-    "signInFirst": "Connectez-vous ou créez un compte pour accepter."
+    "signInFirst": "Connectez-vous ou créez un compte pour accepter.",
+    "clientTitle": "Votre espace client",
+    "clientBody": "Cette invitation vous donne accès au suivi de votre compte.",
+    "clientAccepted": "Accès confirmé. Vous recevrez un lien dès qu'un élément est partagé avec vous."
   },
   "roles": {
     "owner": "Propriétaire",
@@ -366,7 +374,9 @@
       "emptyTitle": "Aucun contact",
       "emptyDescription": "Ajoutez la personne à qui vous parlez chez ce client.",
       "added": "Contact ajouté.",
-      "failed": "Impossible d'ajouter ce contact."
+      "failed": "Impossible d'ajouter ce contact.",
+      "invite": "Inviter au portail",
+      "invited": "Invitation envoyée à {email}."
     },
     "activity": {
       "emptyTitle": "Aucune activité",
@@ -384,7 +394,8 @@
       "created": "{actor} a créé le client {name}",
       "updated": "{actor} a modifié {name}",
       "archived": "{actor} a archivé {name}",
-      "contact_added": "{actor} a ajouté le contact {name}"
+      "contact_added": "{actor} a ajouté le contact {name}",
+      "contact_invited": "{actor} a invité {name} au portail"
     },
     "unknownActor": "Quelqu'un"
   }

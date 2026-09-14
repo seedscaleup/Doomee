@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
 import en from '../../messages/en.json'
 import fr from '../../messages/fr.json'
-import { enterWorkspace } from './helpers/workspace'
+import { enterWorkspace, signUpAndSignIn, uniqueEmail } from './helpers/workspace'
+import { linkFrom, waitForMail } from './mailbox'
 import { formAlert } from './ui'
 
 /**
@@ -156,5 +157,69 @@ test.describe('the client boundary', () => {
     await enterWorkspace(page, 'fr', 'missing')
     const response = await page.goto('/fr/app/clients/00000000-0000-0000-0000-000000000000')
     expect(response?.status()).toBe(404)
+  })
+})
+
+/**
+ * A client contact reaches the product through the portal, never through the
+ * internal workspace. The invitation is what opens ONE client account to them
+ * (ADR-023), and this checks both halves: the access is granted, and the
+ * internal side stays shut.
+ */
+test.describe('inviting a client contact to the portal', () => {
+  const WORKSPACE = 'portal-invite'
+  // enterWorkspace names the organisation after the workspace; the invitation
+  // subject carries that name, which is how the right mail is recognised.
+  const ORGANISATION = `Agence ${WORKSPACE}`
+
+  test('grants access to one account and keeps the internal app closed', async ({ browser }) => {
+    const agency = await browser.newContext()
+    const agencyPage = await agency.newPage()
+    await enterWorkspace(agencyPage, 'fr', WORKSPACE)
+
+    await agencyPage.goto('/fr/app/clients')
+    await agencyPage.getByRole('button', { name: fr.clients.new }).first().click()
+    await agencyPage.getByLabel(fr.clients.form.name).fill('Groupe Atlantique')
+    await agencyPage.getByRole('button', { name: fr.common.save }).click()
+    await agencyPage.getByRole('button', { name: 'Groupe Atlantique' }).click()
+
+    const contactEmail = uniqueEmail('contact')
+    await agencyPage.getByRole('tab', { name: fr.clients.tabs.contacts }).click()
+    await agencyPage.getByRole('button', { name: fr.clients.contacts.add }).click()
+    const sheet = agencyPage.getByRole('dialog', { name: fr.clients.contacts.add })
+    await sheet.getByLabel(fr.clients.contacts.name).fill('Awa Traoré')
+    await sheet.getByLabel(fr.clients.contacts.email).fill(contactEmail)
+    await sheet.getByRole('button', { name: fr.common.save }).click()
+
+    await expect(agencyPage.getByText(fr.clients.contacts.noPortalAccess)).toBeVisible()
+    await agencyPage.getByRole('button', { name: fr.clients.contacts.invite }).click()
+    await expect(agencyPage.getByRole('main')).toContainText(contactEmail)
+
+    const invitationUrl = linkFrom(
+      await waitForMail(contactEmail, {
+        subject: fr.emails.portalInvitation.subject.replace('{organization}', ORGANISATION),
+      }),
+    )
+
+    const contact = await browser.newContext()
+    const contactPage = await contact.newPage()
+    await signUpAndSignIn(contactPage, 'fr', contactEmail, 'Awa Traoré')
+
+    await contactPage.goto(invitationUrl)
+    await contactPage.getByRole('button', { name: fr.invitation.accept }).click()
+    await expect(contactPage.getByRole('main')).toContainText(fr.invitation.clientAccepted)
+
+    // The decisive assertion: a client membership is not a way in. 404, not
+    // 403 — the internal workspace does not confirm that it exists.
+    const response = await contactPage.goto('/fr/app')
+    expect(response?.status()).toBe(404)
+
+    // And the agency sees the contact as connected to the portal.
+    await agencyPage.reload()
+    await agencyPage.getByRole('tab', { name: fr.clients.tabs.contacts }).click()
+    await expect(agencyPage.getByText(fr.clients.contacts.portalAccess)).toBeVisible()
+
+    await agency.close()
+    await contact.close()
   })
 })

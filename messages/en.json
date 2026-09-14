@@ -96,6 +96,11 @@
       "subject": "{organization} invited you to doomee",
       "body": "{inviter} invites you to join {organization} on doomee. The invitation expires in seven days.",
       "cta": "Join the team"
+    },
+    "portalInvitation": {
+      "subject": "{organization} has opened your client space",
+      "body": "{inviter} is giving you access to the progress of “{client}” on doomee: what is happening, what is delivered and what it produces, as it goes. The invitation expires in seven days.",
+      "cta": "Open my access"
     }
   },
   "auth": {
@@ -202,7 +207,10 @@
     "body": "You have been invited to join this organisation on doomee.",
     "accept": "Accept the invitation",
     "invalid": "This invitation is invalid or has expired.",
-    "signInFirst": "Sign in or create an account to accept."
+    "signInFirst": "Sign in or create an account to accept.",
+    "clientTitle": "Your client space",
+    "clientBody": "This invitation gives you access to the progress of your account.",
+    "clientAccepted": "Access confirmed. You will get a link as soon as something is shared with you."
   },
   "roles": {
     "owner": "Owner",
@@ -366,7 +374,9 @@
       "emptyTitle": "No contacts",
       "emptyDescription": "Add the person you actually talk to at this client.",
       "added": "Contact added.",
-      "failed": "Could not add this contact."
+      "failed": "Could not add this contact.",
+      "invite": "Invite to the portal",
+      "invited": "Invitation sent to {email}."
     },
     "activity": {
       "emptyTitle": "No activity",
@@ -384,7 +394,8 @@
       "created": "{actor} created the client {name}",
       "updated": "{actor} updated {name}",
       "archived": "{actor} archived {name}",
-      "contact_added": "{actor} added the contact {name}"
+      "contact_added": "{actor} added the contact {name}",
+      "contact_invited": "{actor} invited {name} to the portal"
     },
     "unknownActor": "Someone"
   }

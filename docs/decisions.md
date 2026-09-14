@@ -817,6 +817,81 @@ un bug d'accessibilité, pas comme un détail.
 
 ---
 
+<a id="adr-035"></a>
+## ADR-035 — Une invitation de contact client porte le compte qu'elle ouvre
+
+**Statut** : Accepté · **Date** : 2026-09-14 · **Lot** : 3
+
+**Contexte.** Inviter un collègue et inviter un contact client se ressemblent —
+un jeton, un e-mail, une acceptation — mais ce qu'ils accordent n'a rien à voir.
+Un collègue rejoint une organisation ; un contact client reçoit une fenêtre sur
+**un** compte client, et sur celui-là seulement.
+
+ADR-023 ajoute la contrainte qui casse les modèles naïfs : la même personne suit
+légitimement plusieurs comptes clients, et plusieurs organisations. Un `client_id`
+posé sur `users`, ou un `UNIQUE` sur l'e-mail, rendraient le cas des groupes et
+des holdings impossible à représenter.
+
+**Décision.** `invitations.client_id` porte la portée. À l'acceptation :
+- une ligne `memberships` de rôle `client` **par organisation** (créée si absente) ;
+- une ligne `client_user_access` **par compte client**, en `ON CONFLICT DO NOTHING` ;
+- `client_contacts.user_id` renseigné pour le compte concerné.
+
+La résolution pré-tenant (`invitationByHash`) refuse trois appariements qui n'ont
+pas de sens, plutôt que de les interpréter :
+
+| Jeton | Décision |
+|---|---|
+| rôle `client` **sans** `client_id` | refusé — un rôle portail sans portée |
+| rôle interne **avec** `client_id` | refusé — la seule raison d'écrire ça est d'en abuser |
+| rôle `owner` | refusé — `owner` ne se distribue pas par invitation |
+
+**Ce qui reste fermé.** Un contact client qui atteint l'espace interne reçoit
+**404**. Le garde est dans le layout `(app)`, pas dans le middleware (D1), et il
+**filtre** au lieu de rejeter : la même personne peut être interne dans son agence
+et contact client ailleurs, donc le sélecteur d'organisation ne propose que les
+organisations où elle est interne. Vérifié de bout en bout : le contact accepte,
+son accès existe, et `/fr/app` répond 404.
+
+**Conséquences.** Le portail lui-même (rôle `app_portal`, vues `portal.*`) reste
+au LOT 9 : ce lot livre l'**accès**, pas encore l'écran. Après acceptation, le
+contact voit une confirmation plutôt qu'une redirection vers une porte qui n'est
+pas la sienne.
+
+---
+
+<a id="adr-036"></a>
+## ADR-036 — Le schéma TypeScript et la base migrée sont comparés par un test
+
+**Statut** : Accepté · **Date** : 2026-09-14 · **Lot** : 3
+
+**Contexte.** Les migrations sont générées par drizzle-kit **puis relues et
+complétées à la main** — les politiques RLS, et parfois une colonne qui ne peut
+pas être déclarée en TypeScript sans créer un cycle d'imports. C'est assumé
+(CLAUDE.md §7), et c'est exactement par là que les deux se désynchronisent.
+
+C'est arrivé : `invitations.client_id` a été ajoutée dans la migration 0007 — où
+elle devait être, puisqu'elle référence `clients` — mais jamais déclarée dans
+`tenancy.ts`. Rien n'a échoué. La colonne était invisible pour toutes les
+requêtes, et le prochain `pnpm db:generate` aurait proposé de la créer une
+seconde fois.
+
+**Décision.** `tests/integration/schema-drift.test.ts` compare, sur une base
+réellement migrée, les colonnes déclarées dans `src/db/schema` et celles présentes
+dans `information_schema`. Dans les deux sens : déclarée et absente, présente et
+non déclarée.
+
+Le test est **généré depuis le schéma**, donc une table ajoutée demain est couverte
+le jour où elle existe — comme les suites d'isolation et de couverture RLS.
+
+**Conséquences.** Une contrainte qu'un cycle d'imports empêche de déclarer en
+TypeScript reste écrite à la main dans la migration ; ce que le test exige, c'est
+que la **colonne**, elle, soit déclarée. L'instantané drizzle correspondant est
+mis à jour en conséquence, pour que `pnpm db:generate` reste silencieux tant que
+le schéma n'a pas bougé.
+
+---
+
 ## Décisions tranchées avec le commanditaire — 2026-09-14
 
 | # | Sujet | Décision | ADR |

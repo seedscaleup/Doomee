@@ -22,6 +22,15 @@ const TEMPLATES = {
     bodyKey: 'invitation.body',
     ctaKey: 'invitation.cta',
   },
+  /**
+   * A client contact is not joining a team, they are being given a window onto
+   * their own account. Same mechanism, different promise — so different words.
+   */
+  portalInvitation: {
+    subjectKey: 'portalInvitation.subject',
+    bodyKey: 'portalInvitation.body',
+    ctaKey: 'portalInvitation.cta',
+  },
 } as const satisfies Record<string, Template>
 
 export type TemplateName = keyof typeof TEMPLATES

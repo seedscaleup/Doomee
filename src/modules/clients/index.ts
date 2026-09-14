@@ -1,4 +1,10 @@
-export { addClientContact, archiveClient, createClient, updateClient } from './mutations'
+export {
+  addClientContact,
+  archiveClient,
+  createClient,
+  inviteContactToPortal,
+  updateClient,
+} from './mutations'
 export {
   type ClientRow,
   getClient,

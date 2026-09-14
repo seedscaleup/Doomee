@@ -30,13 +30,20 @@ export async function signUpAndSignIn(
   await page.getByLabel(messages.auth.signUp.password, { exact: true }).fill(PASSWORD)
   await page.getByRole('button', { name: messages.auth.signUp.submit }).click()
 
-  // Follow the verification link, exactly as the recipient would.
-  await page.goto(linkFrom(await waitForMail(email)))
+  // Follow the verification link, exactly as the recipient would — named by
+  // subject, because this address may already hold an invitation.
+  await page.goto(linkFrom(await waitForMail(email, { subject: messages.emails.verify.subject })))
 
   await page.goto(`/${locale}/sign-in`)
   await page.getByLabel(messages.auth.signIn.email).fill(email)
   await page.getByLabel(messages.auth.signIn.password).fill(PASSWORD)
   await page.getByRole('button', { name: messages.auth.signIn.submit }).click()
+
+  // Wait for the session cookie to actually be set. Navigating away while the
+  // sign-in request is still in flight leaves the next page anonymous, which
+  // then redirects back here — a failure that reads like a broken page rather
+  // than the race it is.
+  await expect(page).not.toHaveURL(/\/sign-in/)
 }
 
 export async function createOrganisation(

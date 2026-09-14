@@ -273,6 +273,10 @@ Les métriques calculées sont dérivées **à la lecture** par le service `metr
 `is_primary boolean` *(le « responsable côté client »)* · `user_id` FK NULL *(si invité au portail)*
 **FK composite (organization_id, client_id)** · **UNIQUE (organization_id, client_id, email)**
 
+> `invitations.client_id` porte la portée d'une invitation de contact : accepter
+> crée un `membership` de rôle `client` par organisation et une ligne
+> `client_user_access` **par compte client**, jamais l'inverse (ADR-035).
+
 > ⚠️ L'unicité porte sur **(client, e-mail)**, jamais sur l'e-mail seul : la même personne est un contact
 > légitime de plusieurs clients (ADR-023). `user_id` pointe vers le **même** enregistrement `users` dans tous les cas.
 

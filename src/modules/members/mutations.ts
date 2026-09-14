@@ -2,8 +2,16 @@
 
 import { and, eq, sql } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
-import { invitations, memberships, organizations, subscriptions, users } from '@/db/schema'
-import { withTenant } from '@/db/tenant'
+import {
+  clientContacts,
+  clientUserAccess,
+  invitations,
+  memberships,
+  organizations,
+  subscriptions,
+  users,
+} from '@/db/schema'
+import { type TenantDb, withTenant } from '@/db/tenant'
 import { isLocale, type Locale } from '@/i18n/routing'
 import { createToken, hashToken, setActiveOrganization } from '@/lib/auth/session-store'
 import { serverEnv } from '@/lib/env'
@@ -209,16 +217,18 @@ export const deactivateMember = defineAction({
  * The token is the authorisation. It is compared by hash, single-use, and the
  * organisation comes from the stored row — never from the request.
  */
-export async function acceptInvitation(token: string) {
+export async function acceptInvitation(token: string): Promise<AcceptedInvitation> {
   const session = await requireSession()
   const hash = hashToken(token)
 
-  const { organizationId, role } = await lookupInvitation(hash)
+  const target = await lookupInvitation(hash)
+  const { organizationId, role } = target
 
-  const accepted = await withTenant({ organizationId }, async (db) => {
+  await withTenant({ organizationId }, async (db) => {
     const [invitation] = await db
       .select({
         id: invitations.id,
+        email: invitations.email,
         acceptedAt: invitations.acceptedAt,
         revokedAt: invitations.revokedAt,
         expiresAt: invitations.expiresAt,
@@ -250,16 +260,70 @@ export async function acceptInvitation(token: string) {
       })
     }
 
+    if (target.role === 'client') {
+      await grantClientAccess(db, {
+        organizationId,
+        clientId: target.clientId,
+        userId: session.userId,
+        email: invitation.email,
+      })
+    }
+
     await db
       .update(invitations)
       .set({ acceptedAt: new Date(), acceptedBy: session.userId, updatedAt: new Date() })
       .where(eq(invitations.id, invitation.id))
-
-    return organizationId
   })
 
-  await setActiveOrganization(session.userId, accepted)
-  return { organizationId: accepted }
+  // A client contact has no internal workspace to make active, and pointing a
+  // session at one would only invite requireActor to refuse it later.
+  if (target.role === 'client') return { organizationId, kind: 'client' }
+
+  await setActiveOrganization(session.userId, organizationId)
+  return { organizationId, kind: 'internal' }
+}
+
+export type AcceptedInvitation = {
+  organizationId: string
+  kind: 'internal' | 'client'
+}
+
+/**
+ * Opens ONE client account to a portal user, and links the contact row to the
+ * account that now answers for it.
+ *
+ * Both writes are additive on purpose (ADR-023). The same person is a
+ * legitimate contact of several client accounts, and of several organisations:
+ * a second invitation must add a second access, never replace the first and
+ * never fail on a uniqueness rule that was written for a simpler world.
+ */
+async function grantClientAccess(
+  db: TenantDb,
+  scope: { organizationId: string; clientId: string; userId: string; email: string },
+): Promise<void> {
+  await db
+    .insert(clientUserAccess)
+    .values({
+      id: uuidv7(),
+      organizationId: scope.organizationId,
+      clientId: scope.clientId,
+      userId: scope.userId,
+      grantedBy: null,
+    })
+    // Accepting the same invitation twice, or holding access already, is not an
+    // error worth showing anyone.
+    .onConflictDoNothing()
+
+  await db
+    .update(clientContacts)
+    .set({ userId: scope.userId, updatedAt: new Date() })
+    .where(
+      and(
+        eq(clientContacts.organizationId, scope.organizationId),
+        eq(clientContacts.clientId, scope.clientId),
+        eq(clientContacts.email, scope.email),
+      ),
+    )
 }
 
 /**

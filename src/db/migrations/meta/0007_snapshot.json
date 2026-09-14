@@ -1497,6 +1497,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "client_id": {
+          "name": "client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "email": {
           "name": "email",
           "type": "citext",

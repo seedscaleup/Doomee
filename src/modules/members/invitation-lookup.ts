@@ -32,21 +32,46 @@ function lookupDb() {
   return drizzle(pool, { schema })
 }
 
-export type InvitationTarget = {
-  organizationId: string
-  role: 'direction' | 'manager' | 'collaborator'
+/** Mirrors closeDatabase: a module that owns a pool must be able to release it. */
+export async function closeInvitationLookup(): Promise<void> {
+  const open = pool
+  pool = undefined
+  await open?.end()
 }
+
+export type InvitationTarget =
+  | { organizationId: string; role: 'direction' | 'manager' | 'collaborator'; clientId: null }
+  /** A client contact: the invitation names the ONE account it opens. */
+  | { organizationId: string; role: 'client'; clientId: string }
 
 export async function invitationByHash(hash: string): Promise<InvitationTarget | null> {
   const rows = await lookupDb()
-    .select({ organizationId: invitations.organizationId, role: invitations.role })
+    .select({
+      organizationId: invitations.organizationId,
+      role: invitations.role,
+      clientId: invitations.clientId,
+    })
     .from(invitations)
     .where(eq(invitations.tokenHash, hash))
     .limit(1)
 
   const found = rows[0]
   if (!found) return null
-  if (found.role === 'owner' || found.role === 'client') return null
 
-  return { organizationId: found.organizationId, role: found.role }
+  // owner is never handed out by invitation: it is held by whoever created the
+  // organisation, and transferred deliberately.
+  if (found.role === 'owner') return null
+
+  if (found.role === 'client') {
+    // A client invitation without a client id would grant a portal role with no
+    // scope. Refuse it rather than guess what it was meant to open.
+    if (!found.clientId) return null
+    return { organizationId: found.organizationId, role: 'client', clientId: found.clientId }
+  }
+
+  // Conversely, an internal role must not carry a client scope: that pairing
+  // has no meaning and would only be a way to smuggle one.
+  if (found.clientId) return null
+
+  return { organizationId: found.organizationId, role: found.role, clientId: null }
 }

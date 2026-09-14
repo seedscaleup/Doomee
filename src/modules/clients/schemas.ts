@@ -45,3 +45,6 @@ export const inviteClientContactSchema = z.object({
   isPrimary: z.boolean().default(false),
 })
 export type InviteClientContactInput = z.infer<typeof inviteClientContactSchema>
+
+export const inviteContactToPortalSchema = z.object({ contactId: z.uuid() })
+export type InviteContactToPortalInput = z.infer<typeof inviteContactToPortalSchema>
