@@ -9,6 +9,7 @@ import {
   startTestDatabase,
   type TestDatabase,
 } from '../helpers/database'
+import { NON_TENANT_TABLES } from '../helpers/non-tenant-tables'
 
 /**
  * BEHAVIOURAL GUARD — the one that matters commercially.
@@ -73,9 +74,6 @@ function pgMessage(error: unknown): string {
   const cause = error.cause
   return cause instanceof Error ? cause.message : error.message
 }
-
-/** Mirrors rls-coverage.test.ts. Kept in sync by the coverage assertion below. */
-const NON_TENANT_TABLES = new Set(['users', 'audit_logs', 'schema_migrations'])
 
 describe('tenant isolation', () => {
   let db: TestDatabase
@@ -178,6 +176,46 @@ describe('tenant isolation', () => {
         }),
       ).rejects.toThrow()
     })
+  })
+
+  it("does not let one organisation enumerate another's users (ADR-028)", async () => {
+    // users has no organization_id — one person, several organisations
+    // (ADR-023) — so visibility is granted through a shared membership. This
+    // is the test that proves an organisation cannot harvest its competitors'
+    // staff directory.
+    const outsider = await seedUser(query, `outsider-${newId()}@example.test`)
+
+    const visible = await withTenant({ organizationId: orgA.id }, (tx) =>
+      tx.execute(sql.raw(`SELECT id FROM users WHERE id = '${outsider}'`)),
+    )
+    expect(visible.rows).toEqual([])
+
+    // A member of org A IS visible from org A, so the policy is not simply
+    // blocking everything.
+    const memberOfA = await admin.query<{ user_id: string }>(
+      'SELECT user_id FROM memberships WHERE organization_id = $1 LIMIT 1',
+      [orgA.id],
+    )
+    const known = memberOfA.rows[0]?.user_id
+    const found = await withTenant({ organizationId: orgA.id }, (tx) =>
+      tx.execute(sql.raw(`SELECT id FROM users WHERE id = '${known}'`)),
+    )
+    expect(found.rows).toHaveLength(1)
+
+    // And that same member is invisible from org B.
+    const fromB = await withTenant({ organizationId: orgB.id }, (tx) =>
+      tx.execute(sql.raw(`SELECT id FROM users WHERE id = '${known}'`)),
+    )
+    expect(fromB.rows).toEqual([])
+  })
+
+  it('never lets app_user write a user row', async () => {
+    const target = await seedUser(query, `victim-${newId()}@example.test`)
+    const error = await withTenant({ organizationId: orgA.id }, (tx) =>
+      tx.execute(sql.raw(`UPDATE users SET name = 'hijacked' WHERE id = '${target}'`)),
+    ).catch((caught: unknown) => caught)
+
+    expect(pgMessage(error)).toMatch(/permission denied/i)
   })
 
   it('rejects a context that is not a uuid', async () => {

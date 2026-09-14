@@ -32,6 +32,8 @@
 | [ADR-024](#adr-024) | Multi-devise sans conversion au MVP | **Acceptée** |
 | [ADR-025](#adr-025) | Le Project Health Score reste interne | **Acceptée** |
 | [ADR-026](#adr-026) | Vues `portal.*` pour l'isolation au niveau colonne | Proposée |
+| [ADR-027](#adr-027) | scrypt plutôt qu'Argon2id pour les mots de passe | Proposée |
+| [ADR-028](#adr-028) | `users` : lignes globales, visibilité par organisation | **Acceptée** |
 
 ---
 
@@ -568,6 +570,67 @@ fait appliquer RLS avec les droits de `app_portal` : la vue **cumule** les deux 
 **Conséquences** — ✅ Fuite de colonne structurellement impossible ; revue simplifiée (la vue est la
 spécification de ce que voit le client). ❌ Une quinzaine de vues à maintenir ; ajouter un champ au
 portail demande une migration — **c'est le but**. Test : `app_portal` n'a aucun droit sur le schéma `public`.
+
+---
+
+<a id="adr-027"></a>
+## ADR-027 — scrypt plutôt qu'Argon2id pour le hachage des mots de passe
+**Statut** : Proposée · LOT 1
+
+**Contexte** — `docs/architecture.md` §6.1 annonçait Argon2id. À l'implémentation, Argon2id en Node
+impose le paquet `argon2`, **module natif** qui doit être compilé.
+
+**Décision** — Utiliser le **scrypt intégré** de Better Auth (implémentation `node:crypto`).
+
+**Pourquoi** — un module natif casse la propriété centrale d'ADR-021 : une image unique, portable,
+construite sans chaîne de compilation. Sur `node:22-alpine` il faudrait ajouter `python3`, `make` et
+`g++` au stage de build, faire grossir l'image, et accepter qu'une mise à jour de Node puisse casser
+le binaire. Le coût est réel et permanent ; le gain est marginal : scrypt est une fonction
+**mémoire-dure**, explicitement recommandée par l'OWASP au même titre qu'Argon2id, et ce n'est pas le
+facteur limitant de notre modèle de menace (vérification d'e-mail obligatoire, 12 caractères minimum,
+limitation de débit sur la connexion, 2FA disponible).
+
+**Conséquences** — ✅ Image légère, aucune compilation, aucune dépendance native.
+❌ Marge de résistance au GPU inférieure à Argon2id. Réversible : Better Auth accepte une fonction de
+hachage personnalisée, et une migration transparente au prochain login est possible si le besoin change.
+
+---
+
+<a id="adr-028"></a>
+## ADR-028 — `users` : lignes globales, visibilité limitée à l'organisation
+**Statut** : **Acceptée** · LOT 1 · *Corrige une fuite identifiée en conception*
+
+**Le problème, trouvé pendant le LOT 1** — ADR-023 impose une personne = **un seul** enregistrement
+`users`, partagé entre organisations. La table ne peut donc pas porter `organization_id`, et la
+documentation en concluait qu'elle n'avait « pas de RLS ». Conséquence non vue à ce moment :
+`app_user` pouvait lire **tous les utilisateurs de la plateforme** — nom et e-mail compris.
+Une organisation aurait pu extraire l'annuaire du personnel de ses concurrents. C'est bien une fuite
+inter-organisations, la classe de risque R1.
+
+**Décision** — `users` reçoit une politique RLS de **visibilité** : une ligne n'est lisible que s'il
+existe une adhésion partagée dans l'organisation **courante**.
+
+```sql
+CREATE POLICY same_organization_read ON users FOR SELECT TO app_user
+  USING (EXISTS (SELECT 1 FROM memberships m
+                  WHERE m.user_id = users.id
+                    AND m.organization_id = current_setting('app.organization_id', true)::uuid));
+REVOKE INSERT, UPDATE, DELETE ON users FROM app_user;
+```
+
+**Le seul `ENABLE` sans `FORCE` du schéma** — et c'est délibéré. `FORCE` soumet le propriétaire de la
+table aux politiques ; or Better Auth se connecte comme propriétaire et doit retrouver un utilisateur
+par e-mail **avant** que la moindre organisation soit connue. `app_user` n'est pas le propriétaire :
+la politique le contraint bel et bien. Cette exception unique est commentée dans la migration et
+vérifiée par un test dédié.
+
+**Écriture interdite à `app_user`** — le profil se modifie via Better Auth, qui se connecte comme
+propriétaire. L'application peut lire un collègue, jamais le réécrire.
+
+**Conséquences** — ✅ L'énumération inter-organisations devient impossible, prouvée par un test
+(`tenant-isolation.test.ts`) qui rougit dès que la politique saute. ❌ Toute lecture de `users` doit
+se faire dans un contexte tenant : un écran hors organisation (choix de l'organisation à la connexion)
+passe par la couche d'authentification, pas par `withTenant`.
 
 ---
 

@@ -1,6 +1,7 @@
 import { Client } from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { startTestDatabase, type TestDatabase } from '../helpers/database'
+import { IDENTITY_TABLES, NON_TENANT_TABLES } from '../helpers/non-tenant-tables'
 
 /**
  * STRUCTURAL GUARD — generated from the live schema, not from a hand-kept list.
@@ -9,16 +10,6 @@ import { startTestDatabase, type TestDatabase } from '../helpers/database'
  * That is the whole point: the day someone adds `deliverables` and forgets the
  * policy, CI says so before a cross-tenant leak ever reaches production.
  */
-
-/**
- * Tables that are deliberately NOT tenant-scoped. Each entry is a decision,
- * and adding one requires editing this file — which is a reviewable act.
- */
-const NON_TENANT_TABLES = new Map<string, string>([
-  ['users', 'Global by design: one person, one account, across organisations (ADR-023)'],
-  ['audit_logs', 'Spans tenants and records platform-level actions; append-only'],
-  ['schema_migrations', 'Migration bookkeeping, not application data'],
-])
 
 describe('row level security coverage', () => {
   let db: TestDatabase
@@ -105,6 +96,37 @@ describe('row level security coverage', () => {
     // ADR-026: the portal reads portal.* views only. A grant here would let a
     // client read internal columns the views deliberately omit.
     expect(rows).toEqual([])
+  })
+
+  it('app_user cannot touch the identity tables', async () => {
+    const { rows } = await admin.query<{ table_name: string; privilege_type: string }>(
+      `SELECT table_name, privilege_type FROM information_schema.role_table_grants
+        WHERE grantee = 'app_user' AND table_name = ANY ($1)`,
+      [IDENTITY_TABLES],
+    )
+    // Sessions and credential hashes carry no tenant column: a single SELECT
+    // would expose every account on the platform.
+    expect(rows).toEqual([])
+  })
+
+  it('users is readable but never writable by app_user (ADR-028)', async () => {
+    const { rows } = await admin.query<{ privilege_type: string }>(
+      `SELECT privilege_type FROM information_schema.role_table_grants
+        WHERE grantee = 'app_user' AND table_name = 'users'`,
+    )
+    const privileges = rows.map((row) => row.privilege_type)
+    expect(privileges).toContain('SELECT')
+    expect(privileges).not.toContain('INSERT')
+    expect(privileges).not.toContain('UPDATE')
+    expect(privileges).not.toContain('DELETE')
+  })
+
+  it('users has a visibility policy so members cannot be enumerated', async () => {
+    const { rows } = await admin.query<{ policyname: string; cmd: string }>(
+      `SELECT policyname, cmd FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'users' AND 'app_user' = ANY (roles)`,
+    )
+    expect(rows.map((row) => row.cmd)).toContain('SELECT')
   })
 
   it('audit_logs is append-only, even for app_user', async () => {

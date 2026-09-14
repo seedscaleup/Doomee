@@ -16,6 +16,7 @@
     "db:down": "docker compose down",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
+    "db:provision": "tsx src/db/provision.ts",
     "db:seed": "tsx src/db/seed/index.ts",
     "test": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
@@ -28,6 +29,7 @@
     "verify": "pnpm typecheck && pnpm lint && pnpm check:i18n && pnpm check:boundaries && pnpm test && pnpm test:integration && pnpm build && pnpm test:e2e"
   },
   "dependencies": {
+    "better-auth": "^1.7.4",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
     "next": "^15.5.25",

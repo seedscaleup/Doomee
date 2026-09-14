@@ -10,7 +10,17 @@ const serverEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   APP_URL: z.url().default('http://localhost:3000'),
 
+  /** The application role: subject to RLS, used by withTenant (app_user/app_portal). */
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  /**
+   * Better Auth's connection. The auth tables carry no RLS by design, and
+   * sign-in happens before any organisation is known, so this role is not
+   * app_user. It is never granted to app_portal.
+   */
+  DATABASE_AUTH_URL: z.string().min(1, 'DATABASE_AUTH_URL is required'),
+
+  /** Signs session cookies and tokens. At least 32 characters, never committed. */
+  AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
 
   S3_ENDPOINT: z.url(),
   S3_REGION: z.string().min(1),

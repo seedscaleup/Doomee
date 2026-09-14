@@ -8,5 +8,6 @@
  * (spans tenants) and the Better Auth session tables.
  */
 export * from './audit'
+export * from './auth'
 export * from './enums'
 export * from './tenancy'

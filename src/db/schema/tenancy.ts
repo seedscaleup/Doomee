@@ -51,8 +51,11 @@ export const users = pgTable(
   {
     id: uuid('id').primaryKey(),
     email: citext('email').notNull().unique(),
-    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+    /** Owned by Better Auth. The moment of verification is kept in audit_logs. */
+    emailVerified: boolean('email_verified').notNull().default(false),
     name: text('name').notNull(),
+    /** Avatar: an OAuth provider URL, or a storage key once uploads exist. */
+    image: text('image'),
     /** Interface and notification language. */
     locale: localeCode('locale').notNull().default('fr'),
     /** Report language — deliberately independent of the interface (ADR-011). */

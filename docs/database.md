@@ -146,6 +146,10 @@ CREATE TYPE field_kind       AS ENUM ('number','percent','currency','text','long
 
 > `users` est **global**, pas tenant : une même personne peut appartenir à plusieurs organisations.
 > C'est la seule table applicative sans `organization_id`, avec `sessions`, `accounts` et `audit_logs`.
+>
+> ⚠️ **Mais elle porte une politique RLS de visibilité** (ADR-028) : `app_user` ne lit une ligne que
+> s'il existe une adhésion partagée dans l'organisation courante, et ne peut jamais l'écrire.
+> Sans cela, une organisation pourrait énumérer les utilisateurs de toutes les autres.
 
 ### `memberships`
 `id` · `organization_id` FK · `user_id` FK · `role org_role` · `status member_status` ·

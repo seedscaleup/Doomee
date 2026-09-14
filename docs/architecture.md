@@ -344,7 +344,7 @@ Une suite de tests dédiée, bloquante en CI :
 
 ### 6.1. Authentification — Better Auth
 
-- **E-mail + mot de passe** (Argon2id), vérification d'adresse obligatoire, réinitialisation par jeton court.
+- **E-mail + mot de passe** (**scrypt**, `node:crypto` — Argon2id écarté car module natif, ADR-027), vérification d'adresse obligatoire, réinitialisation par jeton court.
 - **Lien magique** pour les contacts clients (moins de friction sur le portail).
 - **OAuth Google** optionnel pour les membres internes.
 - **2FA (TOTP)** disponible, exigible par l'organisation.

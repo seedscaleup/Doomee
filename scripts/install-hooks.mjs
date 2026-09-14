@@ -6,8 +6,9 @@
  * explicitly is better than `|| true`, which would also swallow a real failure
  * on a developer machine.
  */
-import { existsSync } from 'node:fs'
+
 import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 
 if (!existsSync('.git')) {
   console.warn('No .git directory — skipping Git hook installation.')
