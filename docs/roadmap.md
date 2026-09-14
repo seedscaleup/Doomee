@@ -69,7 +69,7 @@ Un lot est terminé quand **tous** ces points sont vrais :
 11. **Règles de dépendance vérifiées en CI** : `app → modules → db|lib`, et aucun SDK d'infrastructure hors `src/lib/storage` / `src/lib/mail`.
 12. `CLAUDE.md` + `docs/` versionnés.
 
-✅ **Sortie** : `pnpm ci` est vert. Un `/fr` et un `/en` s'affichent. La CI bloque sur une clé i18n manquante
+✅ **Sortie** : `pnpm verify` est vert. Un `/fr` et un `/en` s'affichent. La CI bloque sur une clé i18n manquante
 et sur une violation de frontière de module. L'image Docker démarre et répond.
 
 ---

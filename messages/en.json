@@ -1,0 +1,63 @@
+{
+  "app": {
+    "name": "doomee",
+    "tagline": "Do. Track. Show.",
+    "promise": "Turn work into visible results."
+  },
+  "common": {
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "language": "Language",
+    "french": "French",
+    "english": "English"
+  },
+  "errors": {
+    "unauthenticated": "You need to sign in to continue.",
+    "forbidden": "You do not have access to this resource.",
+    "not_found": "This page could not be found.",
+    "validation_failed": "Some information is invalid.",
+    "conflict": "This operation conflicts with the current state.",
+    "rate_limited": "Too many attempts. Please try again shortly.",
+    "internal": "Something went wrong. Our team has been notified."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The link may be out of date, or the page has moved.",
+    "backHome": "Back to home"
+  },
+  "home": {
+    "badge": "Technical foundation",
+    "title": "Turn work into visible results.",
+    "description": "Doomee connects every objective to an action, every action to a result, and every result to the next decision.",
+    "loopTitle": "The Doomee loop",
+    "loop": {
+      "objective": "Objective",
+      "action": "Action",
+      "deliverable": "Deliverable",
+      "result": "Result",
+      "analysis": "Analysis",
+      "insight": "Insight",
+      "recommendation": "Recommendation",
+      "nextAction": "Next action"
+    }
+  },
+  "devTokens": {
+    "title": "Design tokens",
+    "description": "Visual review of the Doomee palette. No colour is hard-coded in a component.",
+    "colorName": "Name",
+    "colorValue": "Value",
+    "usage": "Usage",
+    "tokens": {
+      "yellow": "Action and energy — one dominant element per screen",
+      "black": "Body text, headings, inverted surfaces",
+      "background": "Application background",
+      "surface": "Cards, panels, dialogs",
+      "border": "Dividers, outlines",
+      "success": "Done, approved, objective reached",
+      "danger": "Error, overdue, blocked, critical",
+      "warning": "Attention, deadline approaching, medium level"
+    }
+  }
+}

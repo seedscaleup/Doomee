@@ -29,11 +29,11 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | **LOT 0 — socle technique** (voir `docs/roadmap.md`) |
+| **Phase actuelle** | **LOT 0 terminé et vérifié** — `pnpm verify` vert de bout en bout |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | Architecture validée · décisions O1, O2, O3, O7, O10 tranchées (ADR-021 à ADR-026) |
-| **Prochaine étape** | LOT 0 — ne pas démarrer le LOT 1 avant que le LOT 0 soit terminé et vérifié |
-| **Question à lever avant le LOT 1** | **O5** — le rôle `owner` (ADR-012) est-il validé ? Il conditionne la matrice de permissions |
+| **Dernier jalon** | Socle technique livré : Next.js 15 · Tailwind v4 · Drizzle · next-intl FR/EN · Vitest + Testcontainers · Playwright · Biome · CI · image Docker vérifiée |
+| **Prochaine étape** | **LOT 1 — tenancy, authentification, RLS.** Aucune décision ouverte ne le bloque |
+| **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md` |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
 > suivante de reprendre sans perdre le contexte.
@@ -111,7 +111,9 @@ Un module n'importe un autre module **que par son `index.ts`**.
 
 - La matrice `PERMISSIONS` est une **donnée typée**, pas des `if (role === 'manager')` dispersés.
 - L'interface masque, elle ne sécurise pas. Elle appelle la **même** fonction `can()`.
-- Rôles : `platform_admin` (hors org) · `owner` · `direction` · `manager` · `collaborator` · `client`.
+- Rôles : `platform_admin` (hors org) · `owner` · `direction` · `manager` · `collaborator` · `client` (ADR-012).
+- `owner` est un rôle **d'organisation** porté par `memberships`, soumis à RLS comme tout membre.
+  `platform_admin` est un attribut de `users`, hors organisation. Les deux ne se substituent jamais.
 - Un client atteignant une URL interne reçoit **404**, jamais 403 (ne pas confirmer l'existence).
 - Toute action sensible est écrite dans `audit_logs` (table en insertion seule).
 
@@ -199,9 +201,12 @@ pnpm db:seed          # référentiel système + données de démo
 pnpm test             # tests unitaires
 pnpm test:integration # tests d'intégration (Testcontainers)
 pnpm test:e2e         # Playwright
-pnpm lint             # Biome
+pnpm lint             # Biome (lint + format)
 pnpm typecheck        # tsc --noEmit
-pnpm ci               # tout, dans l'ordre de la CI
+pnpm check:i18n       # aucune chaîne visible en dur dans le JSX
+pnpm check:boundaries # frontières de modules (dependency-cruiser)
+pnpm verify           # tout, dans l'ordre de la CI
+                      # (le nom `ci` est réservé par pnpm)
 ```
 
 ---
@@ -263,10 +268,11 @@ sous-tâches, dépendances, Gantt · paiement en ligne · SSO/SAML · applicatio
 | **Contact client multi-comptes** | **Oui** — plusieurs comptes clients **et** plusieurs organisations (groupes, holdings), prévu dès le modèle | ADR-023 |
 | **Multi-devise** | Stockage et affichage seuls ; **pas de conversion** au MVP, architecture prête pour l'ajouter | ADR-024 |
 | **Health Score côté client** | **Non** — outil interne ; un indicateur simplifié distinct pourra être exposé plus tard | ADR-025 |
+| **Modèle de rôles** | **6 rôles validés** : `platform_admin` (plateforme) · `owner` · `direction` · `manager` · `collaborator` · `client`. **`owner` est un rôle d'organisation et ne remplace pas le Super Admin** | ADR-012 |
 
-Restent ouvertes, à traiter dans leur lot : **O4** (export Excel/CSV) · **O5** (rôle `owner`, à lever
-**avant le LOT 1**) · **O6** (gamification) · **O8** (rétention après résiliation) · **O9** (commentaire
-client sur une action). Voir `docs/decisions.md`.
+Restent ouvertes, à traiter dans leur lot : **O4** (export Excel/CSV) · **O6** (gamification) ·
+**O8** (rétention après résiliation) · **O9** (commentaire client sur une action). Voir `docs/decisions.md`.
+Aucune ne bloque le LOT 1.
 
 ---
 
@@ -275,5 +281,5 @@ client sur une action). Voir `docs/decisions.md`.
 1. Mettre à jour le §2 (phase, dernier jalon).
 2. Consigner tout nouvel arbitrage dans `docs/decisions.md` (nouvel ADR).
 3. Mettre à jour `docs/database.md` si le schéma a bougé.
-4. Vérifier que `pnpm ci` est vert.
+4. Vérifier que `pnpm verify` est vert.
 5. Commiter sur `claude/laughing-keller-gd9tu8` avec un message explicite.

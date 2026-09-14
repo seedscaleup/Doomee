@@ -17,7 +17,7 @@
 | [ADR-009](#adr-009) | Métriques normalisées, pas de JSONB libre | Proposée |
 | [ADR-010](#adr-010) | Enums pour les états, tables pour les taxonomies | Proposée |
 | [ADR-011](#adr-011) | Trois langues indépendantes | Proposée |
-| [ADR-012](#adr-012) | Ajout du rôle `owner` | Proposée |
+| [ADR-012](#adr-012) | Ajout du rôle `owner` | **Acceptée** |
 | [ADR-013](#adr-013) | Compteurs dénormalisés | Proposée |
 | [ADR-014](#adr-014) | Rapports figés par snapshot | Proposée |
 | [ADR-015](#adr-015) | `@react-pdf/renderer` plutôt qu'un navigateur headless | Proposée |
@@ -251,7 +251,7 @@ Vérifié par les tests.
 
 <a id="adr-012"></a>
 ## ADR-012 — Ajout du rôle `owner` à côté de `direction`
-**Statut** : Proposée
+**Statut** : **Acceptée** · 2026-09-14 · *Tranche la question O5*
 
 **Contexte** — Le cahier des charges liste 5 rôles et confie la gestion des abonnements au Super Admin.
 
@@ -262,8 +262,22 @@ Vérifié par les tests.
 et donner ces droits à tous les membres « Direction » est dangereux. La séparation propriétaire / dirigeant est un
 standard SaaS attendu par les clients.
 
-**Conséquences** — ✅ Autonomie du client, moins de support. ❌ Un rôle de plus dans la matrice —
-tracé dans l'écart E4, à valider par le commanditaire.
+**Conséquences** — ✅ Autonomie du client, moins de support. ❌ Un rôle de plus dans la matrice.
+
+### Modèle de rôles arrêté (2026-09-14)
+
+| # | Rôle | Portée | Ce qui le définit |
+|---|---|---|---|
+| 1 | **Super Admin** (`platform_admin`) | **La plateforme Doomee**, hors organisation | Administration globale ; l'accès aux données d'une organisation suit les permissions de plateforme et est **systématiquement journalisé** dans `audit_logs` |
+| 2 | **Owner** | **Une** organisation | Propriétaire : membres et utilisateurs, sièges, paramètres de l'organisation, et la facturation / l'abonnement lorsqu'ils seront implémentés. **Aucun accès aux autres organisations** |
+| 3 | **Direction** | Son organisation | Vue globale : projets, résultats, rapports, clients, équipes, selon les permissions définies |
+| 4 | **Manager / Project Manager** | Les projets qui lui sont attribués | Gestion des projets, actions, livrables, résultats et équipes dans son périmètre |
+| 5 | **Collaborateur** | Les projets auxquels il participe | Met à jour ses actions et renseigne les résultats |
+| 6 | **Client** | Le portail client uniquement | Clients, projets, livrables, résultats et rapports qui lui sont autorisés. **Aucun accès aux notes ni aux informations internes** |
+
+> **Owner ≠ Super Admin.** `owner` est un rôle **d'organisation**, porté par `memberships` et soumis à
+> RLS comme tout autre membre. `platform_admin` est un attribut de `users`, hors de toute organisation,
+> et ne remplace ni n'absorbe le rôle `owner`. Les deux coexistent et ne se substituent jamais l'un à l'autre.
 
 ---
 
@@ -566,6 +580,7 @@ portail demande une migration — **c'est le but**. Test : `app_portal` n'a aucu
 | **O3** | Volumétrie à 12 mois | 100 organisations · 1 000 projets · 100 000 actions · plusieurs centaines de milliers de résultats et d'événements ; évolutif au-delà sans refonte | [ADR-022](#adr-022) |
 | **O7** | Contact client multi-comptes | **Oui** — un contact peut couvrir plusieurs comptes clients et plusieurs organisations (groupes, holdings) ; prévu dans le modèle dès le départ | [ADR-023](#adr-023) |
 | **O10** | Health Score visible du client | **Non** au MVP — outil interne de pilotage ; un indicateur simplifié distinct pourra être exposé plus tard | [ADR-025](#adr-025) |
+| **O5** | Rôle `owner` | **Validé** — modèle à 6 rôles arrêté ; `owner` est un rôle d'organisation et ne remplace pas le Super Admin de la plateforme | [ADR-012](#adr-012) |
 
 ---
 
@@ -574,10 +589,8 @@ portail demande une migration — **c'est le but**. Test : `app_portal` n'a aucu
 | # | Sujet | Impact | À trancher avant |
 |---|---|---|---|
 | **O4** | Export Excel/CSV reporté en V2 — acceptable ? | Périmètre du LOT 12 | LOT 12 |
-| **O5** | Rôle `owner` (ADR-012) — validé ? | Matrice de permissions | LOT 1 |
 | **O6** | Gamification : activée par défaut ? désactivable par organisation ? | Paramètres d'organisation | LOT 14 |
 | **O8** | Rétention des données après résiliation d'un abonnement | RGPD, purge | LOT 15 |
 | **O9** | Le client peut-il commenter une **action**, ou seulement un livrable et un rapport ? | Portée du portail | LOT 9 |
 
-> ⚠️ **O5 concerne le LOT 1** : si le rôle `owner` était refusé, la matrice de permissions et le schéma
-> `memberships` changeraient. Question à confirmer avant de démarrer le LOT 1.
+> Aucune décision ouverte ne bloque désormais le LOT 1.

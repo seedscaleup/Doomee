@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/**
+ * Doomee design tokens — the single source of truth for colour.
+ * CLAUDE.md rule: never hard-code a colour in a component (D4).
+ *
+ * Yellow is the ACTION colour. One dominant yellow element per screen,
+ * never as a large background, and always with #111111 text on top.
+ */
+@theme {
+  --color-doomee-yellow: #ffd21f;
+  --color-doomee-black: #111111;
+
+  --color-background: #fafaf7;
+  --color-surface: #ffffff;
+  --color-border: #e8e8e3;
+
+  --color-success: #22a06b;
+  --color-danger: #e5484d;
+  --color-warning: #f59e0b;
+
+  --color-muted: #6b6b66;
+
+  --radius-doomee: 12px;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-doomee-black);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Accessibility: focus must always be visible (AA baseline). */
+  :focus-visible {
+    outline: 2px solid var(--color-doomee-black);
+    outline-offset: 2px;
+  }
+}

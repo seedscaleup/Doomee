@@ -1,0 +1,63 @@
+{
+  "app": {
+    "name": "doomee",
+    "tagline": "Do. Track. Show.",
+    "promise": "Transformez le travail en résultats visibles."
+  },
+  "common": {
+    "loading": "Chargement…",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "back": "Retour",
+    "language": "Langue",
+    "french": "Français",
+    "english": "Anglais"
+  },
+  "errors": {
+    "unauthenticated": "Vous devez être connecté pour continuer.",
+    "forbidden": "Vous n'avez pas accès à cette ressource.",
+    "not_found": "Cette page est introuvable.",
+    "validation_failed": "Certaines informations sont invalides.",
+    "conflict": "Cette opération entre en conflit avec l'état actuel.",
+    "rate_limited": "Trop de tentatives. Réessayez dans quelques instants.",
+    "internal": "Une erreur est survenue. Nos équipes sont prévenues."
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "description": "Le lien est peut-être obsolète, ou la page a été déplacée.",
+    "backHome": "Revenir à l'accueil"
+  },
+  "home": {
+    "badge": "Socle technique",
+    "title": "Transformez le travail en résultats visibles.",
+    "description": "Doomee relie chaque objectif à une action, chaque action à un résultat, et chaque résultat à la décision suivante.",
+    "loopTitle": "La boucle Doomee",
+    "loop": {
+      "objective": "Objectif",
+      "action": "Action",
+      "deliverable": "Livrable",
+      "result": "Résultat",
+      "analysis": "Analyse",
+      "insight": "Insight",
+      "recommendation": "Recommandation",
+      "nextAction": "Prochaine action"
+    }
+  },
+  "devTokens": {
+    "title": "Jetons de design",
+    "description": "Revue visuelle de la palette Doomee. Aucune couleur n'est écrite en dur dans un composant.",
+    "colorName": "Nom",
+    "colorValue": "Valeur",
+    "usage": "Usage",
+    "tokens": {
+      "yellow": "Action et énergie — un seul élément dominant par écran",
+      "black": "Texte principal, en-têtes, surfaces inversées",
+      "background": "Fond d'application",
+      "surface": "Cartes, panneaux, modales",
+      "border": "Séparateurs, contours",
+      "success": "Terminé, validé, objectif atteint",
+      "danger": "Erreur, en retard, bloqué, critique",
+      "warning": "Attention, échéance proche, niveau moyen"
+    }
+  }
+}
