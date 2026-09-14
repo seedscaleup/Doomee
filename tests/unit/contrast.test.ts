@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { AA_LARGE, AA_NORMAL, contrastRatio } from '@/lib/contrast'
+import { AA_LARGE, AA_NORMAL, contrastRatio } from '../helpers/contrast'
 
 /**
  * The palette, checked against WCAG AA.

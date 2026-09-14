@@ -2,6 +2,10 @@
  * WCAG relative luminance and contrast, so the palette can be checked by a
  * test rather than by eye.
  *
+ * Lives with the tests, not in src: nothing in the application computes a
+ * contrast ratio at runtime, and a module in src/lib with no caller is
+ * speculative code (CLAUDE.md rule 8).
+ *
  * Contrast is the one visual property that is objectively right or wrong, and
  * the one that regresses silently: a token nudged two shades lighter looks
  * fine to whoever changed it and fails for everyone else.
