@@ -48,3 +48,16 @@ export type InviteClientContactInput = z.infer<typeof inviteClientContactSchema>
 
 export const inviteContactToPortalSchema = z.object({ contactId: z.uuid() })
 export type InviteContactToPortalInput = z.infer<typeof inviteContactToPortalSchema>
+
+/**
+ * The file arrives as a File, and only its BYTES are trusted: the declared
+ * type and the extension are claims by the uploader, checked against the
+ * signature server-side (see modules/files/service.ts).
+ */
+export const uploadClientLogoSchema = z.object({
+  clientId: z.uuid(),
+  file: z.instanceof(File),
+})
+export type UploadClientLogoInput = z.infer<typeof uploadClientLogoSchema>
+
+export const removeClientLogoSchema = z.object({ clientId: z.uuid() })

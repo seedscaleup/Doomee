@@ -10,6 +10,7 @@ import { AppError } from '@/lib/errors/app-error'
 import { mailer } from '@/lib/mail'
 import { renderMail } from '@/lib/mail/templates'
 import { recordActivity } from '@/modules/activity'
+import { extensionFor, inspectLogo, storeFile } from '@/modules/files'
 import { invitationExpiry } from '@/modules/members'
 import { slugify } from '@/modules/organizations'
 import { defineAction } from '@/server'
@@ -19,7 +20,9 @@ import {
   createClientSchema,
   inviteClientContactSchema,
   inviteContactToPortalSchema,
+  removeClientLogoSchema,
   updateClientSchema,
+  uploadClientLogoSchema,
 } from './schemas'
 import { canTransition } from './service'
 
@@ -352,5 +355,87 @@ export const inviteContactToPortal = defineAction({
     })
 
     return { email: contact.email }
+  },
+})
+
+/**
+ * Replaces a client's logo.
+ *
+ * Everything the uploader says about the file is treated as a claim: the size
+ * is measured, and the type is read from the first bytes rather than from the
+ * filename or the Content-Type (docs/architecture.md §12). A file that is not
+ * one of three raster formats is refused — notably SVG, which is a document
+ * that can carry script.
+ */
+export const uploadClientLogo = defineAction({
+  input: uploadClientLogoSchema,
+  permission: 'client.update',
+  handler: async (input, { actor, db, audit }) => {
+    const [client] = await db
+      .select({ id: clients.id, name: clients.name, logoFileId: clients.logoFileId })
+      .from(clients)
+      .where(and(eq(clients.id, input.clientId), isNull(clients.deletedAt)))
+      .limit(1)
+
+    if (!client) throw new AppError('not_found', 'errors.not_found')
+
+    const bytes = new Uint8Array(await input.file.arrayBuffer())
+    const verdict = inspectLogo(bytes)
+    if (!verdict.ok) throw new AppError('validation_failed', `errors.upload_${verdict.reason}`)
+
+    const stored = await storeFile(db, {
+      organizationId: actor.organizationId,
+      uploadedBy: actor.userId,
+      kind: 'client-logo',
+      filename: input.file.name,
+      mimeType: verdict.mimeType,
+      extension: extensionFor(verdict.mimeType),
+      bytes,
+    })
+
+    await db
+      .update(clients)
+      .set({ logoFileId: stored.id, updatedBy: actor.userId, updatedAt: new Date() })
+      .where(eq(clients.id, input.clientId))
+
+    // The previous logo is unlinked, not deleted: purging the object belongs to
+    // a job that can be re-run, not to the request the user is waiting on.
+    await audit({
+      action: 'client.logo_changed',
+      entityType: 'client',
+      entityId: input.clientId,
+      before: { logoFileId: client.logoFileId },
+      after: { logoFileId: stored.id, mimeType: verdict.mimeType },
+    })
+
+    return { fileId: stored.id }
+  },
+})
+
+export const removeClientLogo = defineAction({
+  input: removeClientLogoSchema,
+  permission: 'client.update',
+  handler: async (input, { actor, db, audit }) => {
+    const [client] = await db
+      .select({ logoFileId: clients.logoFileId })
+      .from(clients)
+      .where(and(eq(clients.id, input.clientId), isNull(clients.deletedAt)))
+      .limit(1)
+
+    if (!client) throw new AppError('not_found', 'errors.not_found')
+
+    await db
+      .update(clients)
+      .set({ logoFileId: null, updatedBy: actor.userId, updatedAt: new Date() })
+      .where(eq(clients.id, input.clientId))
+
+    await audit({
+      action: 'client.logo_removed',
+      entityType: 'client',
+      entityId: input.clientId,
+      before: { logoFileId: client.logoFileId },
+    })
+
+    return { id: input.clientId }
   },
 })

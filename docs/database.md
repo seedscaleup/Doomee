@@ -506,9 +506,14 @@ Pondérations dans `organizations.settings.health.weights`, valeurs par défaut 
 `organization_id` · `comment_id` · `user_id` — PK (comment_id, user_id) → déclenche une notification.
 
 ### `files`
-`id` · `organization_id` · `storage_key text UNIQUE` *(opaque)* · `filename` · `mime_type` ·
-`size_bytes bigint` · `checksum` · `uploaded_by` · `is_client_visible` · `created_at` · `deleted_at`
-→ Jamais d'accès public. Téléchargement via URL pré-signée ≤ 5 min, après vérification de permission.
+`id` · `organization_id` · `storage_key text UNIQUE` *(opaque, préfixée par le locataire)* ·
+`filename` · `mime_type` · `size_bytes bigint` · `checksum sha256` · `uploaded_by` ·
+`is_client_visible` *(défaut `false`)* · `created_at` · `deleted_at`
+**UNIQUE (organization_id, id)** — cible des FK composites (`clients.logo_file_id`, pièces jointes)
+
+> Jamais d'accès public. Lien signé ≤ 5 min, émis **après** le contrôle de permission et dans la
+> transaction locataire (R13, ADR-037). `mime_type` est le type **lu dans les octets**, pas celui
+> annoncé par l'extension ou l'en-tête. La clé de stockage ne quitte jamais le serveur.
 
 ### `attachments`
 `id` · `organization_id` · `file_id` · `entity_type` · `entity_id` · `project_id` NULL · `created_by`

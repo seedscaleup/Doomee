@@ -36,7 +36,10 @@
     "seats_exhausted": "Le nombre de sièges de votre abonnement est atteint.",
     "invalid_transition": "Ce changement de statut n'est pas possible.",
     "contact_exists": "Ce contact existe déjà pour ce client.",
-    "has_active_projects": "Ce client a encore des projets actifs."
+    "has_active_projects": "Ce client a encore des projets actifs.",
+    "upload_empty": "Ce fichier est vide.",
+    "upload_too_large": "Ce fichier dépasse 2 Mo.",
+    "upload_unsupported_type": "Format non accepté : PNG, JPEG ou WebP uniquement."
   },
   "notFound": {
     "title": "Page introuvable",
@@ -387,6 +390,15 @@
       "title": "Archiver ce client ?",
       "description": "Il n'apparaîtra plus dans les listes actives. Ses données sont conservées.",
       "confirm": "Archiver"
+    },
+    "logo": {
+      "title": "Logo",
+      "hint": "PNG, JPEG ou WebP, 2 Mo maximum.",
+      "change": "Choisir un logo",
+      "remove": "Retirer le logo",
+      "alt": "Logo de {name}",
+      "none": "Aucun logo",
+      "failed": "Impossible d'enregistrer ce logo."
     }
   },
   "activity": {

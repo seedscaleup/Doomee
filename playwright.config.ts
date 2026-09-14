@@ -43,6 +43,11 @@ export default defineConfig({
       MAIL_CAPTURE_FILE: process.env.MAIL_CAPTURE_FILE ?? '',
       AUTH_RATE_LIMIT_DISABLED: process.env.AUTH_RATE_LIMIT_DISABLED ?? '',
       ENABLE_DEV_PAGES: process.env.ENABLE_DEV_PAGES ?? '',
+      // No bucket in the suite: the filesystem adapter is exercised instead,
+      // which is the point of having two real implementations (ADR-021).
+      // `||`, not `??`: an empty string is not a directory, and STORAGE_DIR has
+      // a real default rather than being optional.
+      STORAGE_DIR: process.env.STORAGE_DIR || '.doomee-storage',
     },
   },
 })

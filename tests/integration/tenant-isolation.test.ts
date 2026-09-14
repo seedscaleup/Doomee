@@ -103,6 +103,17 @@ const FIXTURES: Record<string, Fixture> = {
       return id
     },
   },
+  files: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      await query(
+        `INSERT INTO files (id, organization_id, storage_key, filename, mime_type, size_bytes)
+         VALUES ($1, $2, $3, 'logo.png', 'image/png', 1024)`,
+        [id, organizationId, `${organizationId}/client-logo/${id}.png`],
+      )
+      return id
+    },
+  },
   activity_events: {
     seed: async (query, organizationId) => {
       const id = newId()

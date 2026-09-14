@@ -29,10 +29,10 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | **LOT 3 en cours** — clients, contacts et historique livrés et vérifiés ; `pnpm verify` vert |
+| **Phase actuelle** | **LOT 3 terminé et vérifié** — `pnpm verify` vert de bout en bout |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | Domaine client : `clients` · `client_contacts` · `client_user_access` · `industries` · `activity_events`, RLS et isolation générée, CRUD + recherche insensible aux accents, fiche à onglets, `Timeline` |
-| **Reste au LOT 3** | Logo client (`files` + `StorageAdapter`) · invitation d'un contact au portail + contact multi-comptes (ADR-023) |
+| **Dernier jalon** | Domaine client complet : `clients` · `client_contacts` · `client_user_access` · `industries` · `activity_events` · `files`, RLS et isolation générée, CRUD + recherche insensible aux accents, fiche à onglets, `Timeline`, invitation au portail (ADR-035), logo servi par lien signé (ADR-037) |
+| **Prochaine étape** | **LOT 4 — projets.** Aucune décision ouverte ne le bloque |
 | **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md` |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
@@ -254,6 +254,8 @@ pnpm verify           # tout, dans l'ordre de la CI
 | ❌ Une route en Edge Runtime | → Node.js uniquement, sinon la portabilité est perdue (ADR-021) |
 | ❌ Un `loading.tsx` au-dessus d'une page qui peut faire `notFound()` | → la coquille part avant le rendu : `notFound()` répond **200**, et une écriture sur deux n'apparaît pas. `<Suspense>` **dans** la page (ADR-033) |
 | ❌ Un `id` en dur dans un composant réutilisable | → deux instances sur la même page et `aria-labelledby` pointe vers la mauvaise (ADR-034) |
+| ❌ Croire le `Content-Type` ou l'extension d'un fichier téléversé | → lire la signature des octets ; **jamais de SVG** servi en ligne (ADR-037) |
+| ❌ Ajouter une colonne dans une migration écrite à la main sans la déclarer en TypeScript | → invisible pour les requêtes, recréée au prochain `db:generate` ; un test compare les deux (ADR-036) |
 | ❌ Un composant client qui importe le barrel d'un module | → importer `mutations.ts` ou `service.ts` (ADR-030) |
 | ❌ Membre `INHERIT` de `app_user` et `app_portal` | → `NOINHERIT`, sinon union des politiques RLS (ADR-029) |
 | ❌ Une page qui appelle `requireSession()` directement | → `requirePageSession(locale)` : layout et page rendent en parallèle |

@@ -36,7 +36,10 @@
     "seats_exhausted": "Your subscription has no seat left.",
     "invalid_transition": "That status change is not possible.",
     "contact_exists": "That contact already exists for this client.",
-    "has_active_projects": "This client still has active projects."
+    "has_active_projects": "This client still has active projects.",
+    "upload_empty": "This file is empty.",
+    "upload_too_large": "This file is larger than 2 MB.",
+    "upload_unsupported_type": "Unsupported format: PNG, JPEG or WebP only."
   },
   "notFound": {
     "title": "Page not found",
@@ -387,6 +390,15 @@
       "title": "Archive this client?",
       "description": "It will drop out of the active lists. Its data is kept.",
       "confirm": "Archive"
+    },
+    "logo": {
+      "title": "Logo",
+      "hint": "PNG, JPEG or WebP, 2 MB maximum.",
+      "change": "Choose a logo",
+      "remove": "Remove the logo",
+      "alt": "{name} logo",
+      "none": "No logo",
+      "failed": "Could not save this logo."
     }
   },
   "activity": {

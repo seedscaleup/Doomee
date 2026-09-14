@@ -223,3 +223,57 @@ test.describe('inviting a client contact to the portal', () => {
     await contact.close()
   })
 })
+
+/**
+ * The logo is the first file the product stores, so it is where the storage
+ * port earns its keep: bytes in, a link that expires out, and never a public
+ * URL (R13, ADR-021). The suite runs on the filesystem adapter, which serves
+ * through our own signed route — the same contract as a presigned bucket URL.
+ */
+test.describe('a client logo', () => {
+  test('is uploaded, served through a link that expires, and removed', async ({ page }) => {
+    await enterWorkspace(page, 'fr', 'logo')
+    await page.goto('/fr/app/clients')
+
+    await page.getByRole('button', { name: fr.clients.new }).first().click()
+    await page.getByLabel(fr.clients.form.name).fill('Atlas Média')
+    await page.getByRole('button', { name: fr.common.save }).click()
+    await page.getByRole('button', { name: 'Atlas Média' }).click()
+
+    await expect(page.getByText(fr.clients.logo.none)).toBeVisible()
+    await page.getByLabel(fr.clients.logo.change).setInputFiles('tests/e2e/fixtures/logo.png')
+
+    const logo = page.getByRole('img', {
+      name: fr.clients.logo.alt.replace('{name}', 'Atlas Média'),
+    })
+    await expect(logo).toBeVisible()
+
+    const source = await logo.getAttribute('src')
+    expect(source, 'the link must carry its own expiry, never be a bare object URL').toMatch(
+      /expires=\d+&signature=/,
+    )
+
+    // The link works…
+    expect((await page.request.get(source as string)).status()).toBe(200)
+
+    // …and only for what it was signed for: the same signature carried over to
+    // another key is refused, as 404 so it does not confirm what exists.
+    const forged = new URL(source as string)
+    forged.pathname = forged.pathname.replace(/[^/]+\.png$/, 'forged.png')
+    expect(forged.pathname, 'the forged key must differ').not.toBe(
+      new URL(source as string).pathname,
+    )
+    expect((await page.request.get(forged.toString())).status()).toBe(404)
+
+    // An expiry pushed forward by hand is refused too: the signature covers it.
+    const stretched = new URL(source as string)
+    stretched.searchParams.set(
+      'expires',
+      String(Number(stretched.searchParams.get('expires')) + 86_400),
+    )
+    expect((await page.request.get(stretched.toString())).status()).toBe(404)
+
+    await page.getByRole('button', { name: fr.clients.logo.remove }).click()
+    await expect(page.getByText(fr.clients.logo.none)).toBeVisible()
+  })
+})

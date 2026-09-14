@@ -38,6 +38,11 @@
 | [ADR-030](#adr-030) | Barrels de module côté serveur uniquement | Proposée |
 | [ADR-031](#adr-031) | `<dialog>` natif plutôt qu'une bibliothèque de modales | Proposée |
 | [ADR-032](#adr-032) | Couleurs de marque en aplat, variantes `-text` accessibles | **Acceptée** |
+| [ADR-033](#adr-033) | Pas de `loading.tsx` au-dessus d'une page qui peut faire 404 | **Acceptée** |
+| [ADR-034](#adr-034) | Une modale nomme son titre avec un identifiant unique | **Acceptée** |
+| [ADR-035](#adr-035) | Une invitation de contact client porte le compte qu'elle ouvre | **Acceptée** |
+| [ADR-036](#adr-036) | Schéma TypeScript et base migrée comparés par un test | **Acceptée** |
+| [ADR-037](#adr-037) | Port de stockage : filesystem et S3, mêmes tests | **Acceptée** |
 
 ---
 
@@ -889,6 +894,62 @@ TypeScript reste écrite à la main dans la migration ; ce que le test exige, c'
 que la **colonne**, elle, soit déclarée. L'instantané drizzle correspondant est
 mis à jour en conséquence, pour que `pnpm db:generate` reste silencieux tant que
 le schéma n'a pas bougé.
+
+---
+
+<a id="adr-037"></a>
+## ADR-037 — Le port de stockage, et ses deux implémentations réelles
+
+**Statut** : Accepté · **Date** : 2026-09-14 · **Lot** : 3
+
+**Contexte.** ADR-021 exige que le choix de l'hébergeur reste réversible, et que
+tout SDK d'infrastructure vive derrière une interface, dans `src/lib/storage` ou
+`src/lib/mail`, **avec deux implémentations testées** — parce qu'une abstraction
+qui n'a qu'une implémentation n'est qu'une hypothèse sur la portabilité.
+
+**Décision.** `StorageAdapter` expose quatre opérations : `put`, `get`,
+`signedUrl`, `remove`. Deux implémentations :
+
+| | Objets | URL signée |
+|---|---|---|
+| `filesystem` *(défaut)* | disque local | `/api/storage/<clé>?expires=…&signature=…`, HMAC-SHA256 sur `clé:expiration` |
+| `s3` | n'importe quel bucket compatible S3 | URL pré-signée du bucket |
+
+Les deux passent **le même fichier de tests**, `tests/integration/storage-adapters.test.ts`,
+S3 compris — contre un vrai MinIO en conteneur, en suivant réellement le lien
+signé et en vérifiant qu'il répond 403 une fois expiré. L'adaptateur filesystem
+n'est donc pas un bouchon : c'est la seconde implémentation, et c'est celle que
+les suites E2E utilisent.
+
+**Ce que le lien signé garantit (R13).**
+- Cinq minutes au maximum, `MAX_SIGNED_URL_TTL_SECONDS`.
+- Émis **après** le contrôle de permission, dans la transaction locataire qui a
+  prouvé que la ligne nous appartient. La clé de stockage elle-même ne quitte
+  jamais le serveur : opaque ou non, une clé distribuée reste une clé.
+- La signature couvre **la clé et l'expiration**. Reportée sur une autre clé, ou
+  avec une expiration repoussée à la main, elle est refusée — et refusée en
+  **404**, pour ne pas confirmer ce qui existe. Vérifié de bout en bout.
+
+**Le type d'un fichier est lu, pas cru.** L'extension et le `Content-Type` sont
+des affirmations de celui qui téléverse. `detectImageType` lit la signature des
+premiers octets et ne répond que PNG, JPEG, WebP — ou rien. **SVG est absent et
+le reste** : c'est un document qui peut porter du script, et le servir en ligne
+depuis notre origine serait une XSS stockée. Corollaire côté service : seuls ces
+trois types sont servis `inline`, tout le reste en `attachment`, avec
+`X-Content-Type-Options: nosniff`.
+
+La même fonction pure tourne dans le navigateur avant l'envoi — pour dire *quelle*
+règle le fichier enfreint plutôt qu'un échec générique, et pour ne pas envoyer
+deux mégaoctets destinés à être refusés. Elle ne remplace pas le contrôle serveur,
+qui décide.
+
+**Conséquences.**
+- `pnpm dev` et les suites fonctionnent sans aucune infrastructure objet.
+- Changer de fournisseur, c'est changer quatre variables d'environnement ; ce
+  fichier de tests dit si le nouveau se comporte.
+- L'objet d'un ancien logo n'est pas supprimé au moment du remplacement : la
+  ligne est déliée, la purge appartient à un job qu'on peut relancer, pas à la
+  requête que l'utilisateur attend.
 
 ---
 

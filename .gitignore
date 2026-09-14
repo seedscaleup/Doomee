@@ -11,3 +11,6 @@ next-env.d.ts
 playwright-report/
 test-results/
 .DS_Store
+
+# Objects written by the filesystem storage adapter (ADR-021).
+.doomee-storage/

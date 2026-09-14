@@ -18,6 +18,7 @@ import { statusTone } from '@/modules/clients/service'
 import type { ContactRow, IndustryOption } from '@/modules/clients/types'
 import { ClientFormSheet } from '../client-form-sheet'
 import { ContactsPanel } from './contacts-panel'
+import { LogoPanel } from './logo-panel'
 
 type ClientDetailData = {
   id: string
@@ -32,6 +33,7 @@ type ClientDetailData = {
   industryLabels: Record<string, string> | null
   ownerName: string | null
   accountTeamNote: string | null
+  logoUrl: string | null
 }
 
 type ActivityEntry = {
@@ -134,17 +136,21 @@ export function ClientDetail({
       </div>
 
       {tab === 'overview' ? (
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <Detail label={t('form.industry')} value={client.industryLabels?.[locale]} />
-          <Detail label={t('form.owner')} value={client.ownerName} />
-          <Detail label={t('form.email')} value={client.email} />
-          <Detail label={t('form.phone')} value={client.phone} />
-          <Detail label={t('form.website')} value={client.website} />
-          <Detail label={t('form.address')} value={client.address} />
-          {/* Internal note, on an internal screen. The portal views do not
-              select this column at all, so it cannot leak by accident. */}
-          <Detail label={t('form.accountTeamNote')} value={client.accountTeamNote} />
-        </dl>
+        <div className="flex flex-col gap-6">
+          <LogoPanel clientId={client.id} name={client.name} logoUrl={client.logoUrl} />
+
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <Detail label={t('form.industry')} value={client.industryLabels?.[locale]} />
+            <Detail label={t('form.owner')} value={client.ownerName} />
+            <Detail label={t('form.email')} value={client.email} />
+            <Detail label={t('form.phone')} value={client.phone} />
+            <Detail label={t('form.website')} value={client.website} />
+            <Detail label={t('form.address')} value={client.address} />
+            {/* Internal note, on an internal screen. The portal views do not
+                select this column at all, so it cannot leak by accident. */}
+            <Detail label={t('form.accountTeamNote')} value={client.accountTeamNote} />
+          </dl>
+        </div>
       ) : null}
 
       {tab === 'contacts' ? <ContactsPanel clientId={client.id} contacts={contacts} /> : null}

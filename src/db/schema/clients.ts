@@ -27,6 +27,12 @@ export const clients = pgTable(
     name: text('name').notNull(),
     slug: citext('slug').notNull(),
     industryId: uuid('industry_id').references(() => industries.id, { onDelete: 'set null' }),
+    /**
+     * The composite foreign key (organization_id, logo_file_id) -> files is in
+     * the 0008 migration: `files` would have to import this file for the
+     * reverse direction, and declaring it here closes the cycle.
+     */
+    logoFileId: uuid('logo_file_id'),
     description: text('description'),
     website: text('website'),
     email: citext('email'),

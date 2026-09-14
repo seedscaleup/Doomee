@@ -2,7 +2,8 @@ import 'server-only'
 
 import { and, asc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { clientContacts, clients, industries, users } from '@/db/schema'
+import { clientContacts, clients, files, industries, users } from '@/db/schema'
+import { MAX_SIGNED_URL_TTL_SECONDS, storage } from '@/lib/storage'
 import { defineQuery } from '@/server'
 import { listClientsSchema } from './schemas'
 
@@ -71,15 +72,31 @@ export const getClient = defineQuery({
         ownerUserId: clients.ownerUserId,
         ownerName: users.name,
         accountTeamNote: clients.accountTeamNote,
+        logoKey: files.storageKey,
         createdAt: clients.createdAt,
       })
       .from(clients)
       .leftJoin(industries, eq(industries.id, clients.industryId))
       .leftJoin(users, eq(users.id, clients.ownerUserId))
+      .leftJoin(files, eq(files.id, clients.logoFileId))
       .where(and(eq(clients.id, input.id), isNull(clients.deletedAt)))
       .limit(1)
 
-    return rows[0] ?? null
+    const client = rows[0]
+    if (!client) return null
+
+    const { logoKey, ...rest } = client
+
+    /**
+     * The link is minted HERE, after the permission check and inside the tenant
+     * transaction that proved the row is ours — and it expires (R13). The
+     * storage key itself never leaves the server: it is opaque, but an opaque
+     * key that is handed out is still a key.
+     */
+    return {
+      ...rest,
+      logoUrl: logoKey ? await storage().signedUrl(logoKey, MAX_SIGNED_URL_TTL_SECONDS) : null,
+    }
   },
 })
 

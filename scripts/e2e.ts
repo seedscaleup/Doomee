@@ -32,6 +32,8 @@ async function main(): Promise<number> {
   const capturePath = join(captureDir, 'mail.jsonl')
   writeFileSync(capturePath, '', 'utf8')
 
+  const storageDir = mkdtempSync(join(tmpdir(), 'doomee-storage-'))
+
   try {
     const adminUrl = container.getConnectionUri()
     await runMigrations(adminUrl)
@@ -58,12 +60,16 @@ async function main(): Promise<number> {
         // suite runs against.
         ENABLE_DEV_PAGES: 'true',
         LOG_LEVEL: process.env.LOG_LEVEL ?? 'warn',
+        // A throwaway directory for the run, so uploads never accumulate in
+        // the working tree and one run cannot see another's objects.
+        STORAGE_DIR: storageDir,
       },
     })
 
     return result.status ?? 1
   } finally {
     rmSync(captureDir, { recursive: true, force: true })
+    rmSync(storageDir, { recursive: true, force: true })
     await container.stop()
   }
 }

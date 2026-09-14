@@ -32,6 +32,8 @@ const serverEnvSchema = z.object({
   S3_BUCKET: z.string().min(1).optional(),
   S3_ACCESS_KEY_ID: z.string().min(1).optional(),
   S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  /** Where the filesystem adapter keeps objects when no bucket is configured. */
+  STORAGE_DIR: z.string().min(1).default('.doomee-storage'),
 
   /** Any SMTP endpoint. Unset falls back to the console adapter (ADR-021). */
   SMTP_URL: z.string().optional(),

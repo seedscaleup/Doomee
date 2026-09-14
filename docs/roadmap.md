@@ -120,16 +120,18 @@ existants, galerie comprise. Respect de la règle du jaune vérifiable sur `/dev
 
 ---
 
-## LOT 3 — Clients · *critère MVP 1*
-1. Schéma `clients`, `client_contacts` + RLS + tests d'isolation.
-2. Taxonomies : secteurs d'activité (seed).
-3. CRUD client, upload de logo (`files` + R2 minimal).
-4. Liste (recherche, filtre statut, tri) + fiche client avec onglets (les onglets vides s'activeront aux lots suivants).
-5. `activity_events` : première implémentation + composant `Timeline` branché sur l'historique client.
-6. Invitation d'un contact au portail (crée un `membership` rôle `client` + `client_user_access`).
-7. **Contact multi-comptes** (ADR-023) : l'invitation reconnaît un utilisateur existant et lui ajoute un accès, au lieu d'échouer sur l'unicité. Test : un contact rattaché à deux clients, et à deux organisations.
+## LOT 3 — Clients · *critère MVP 1* — ✅ **terminé**
+1. ✅ Schéma `clients`, `client_contacts`, `client_user_access`, `files` + RLS + isolation générée.
+2. ✅ Taxonomies : secteurs d'activité (`industries`, seed système idempotent).
+3. ✅ CRUD client, upload de logo — `files` + `StorageAdapter` (filesystem **et** S3, mêmes tests — ADR-037).
+4. ✅ Liste (recherche insensible aux accents, filtre statut) + fiche client à onglets.
+5. ✅ `activity_events` + `Timeline` branchée sur l'historique client.
+6. ✅ Invitation d'un contact au portail (`membership` rôle `client` + `client_user_access` — ADR-035).
+7. ✅ **Contact multi-comptes** (ADR-023) : plusieurs comptes clients, plusieurs organisations, un accès qui s'ajoute au lieu d'échouer. Testé en intégration.
 
-✅ **Sortie** : E2E « créer un client » ✅ FR + EN.
+✅ **Sortie** : E2E « créer un client » ✅ FR + EN, plus la frontière (une organisation ne voit pas
+les clients d'une autre, un contact client reçoit 404 sur l'espace interne) et le logo servi par un
+lien qui expire.
 
 ---
 
