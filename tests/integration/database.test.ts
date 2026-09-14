@@ -40,7 +40,11 @@ describe('database harness', () => {
     const { rows } = await client.query<{ filename: string }>(
       'SELECT filename FROM schema_migrations ORDER BY filename',
     )
-    expect(rows.map((row) => row.filename)).toContain('0000_init.sql')
+    expect(rows.map((row) => row.filename)).toEqual([
+      '0000_extensions.sql',
+      '0001_tenancy.sql',
+      '0002_rls_policies.sql',
+    ])
   })
 
   it('is idempotent: re-running applies nothing', async () => {

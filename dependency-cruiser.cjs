@@ -56,13 +56,13 @@ module.exports = {
     {
       name: 'no-orphans',
       severity: 'warn',
-      // Exempt: framework entrypoints; the schema barrel (consumed by
+      // Exempt: framework entrypoints Next discovers by convention; the schema barrel (consumed by
       // drizzle.config.ts, outside the cruise root); app-error.ts, which
       // defineAction wires in at LOT 1 — remove that exemption then.
       from: {
         orphan: true,
         pathNot:
-          '(\\.d\\.ts$|^src/(middleware|instrumentation)\\.ts$|^src/db/schema/index\\.ts$|^src/lib/errors/app-error\\.ts$)',
+          '(\\.d\\.ts$|^src/(middleware|instrumentation)\\.ts$|^src/app/(layout|not-found|global-error)\\.tsx$|^src/db/schema/index\\.ts$|^src/lib/errors/app-error\\.ts$)',
       },
       to: {},
     },

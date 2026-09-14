@@ -6,7 +6,10 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+# --ignore-scripts skips our `prepare` lifecycle hook: a container has no .git
+# and no use for Git hooks. pnpm 10 already blocks dependency build scripts by
+# default, so nothing else is affected.
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
