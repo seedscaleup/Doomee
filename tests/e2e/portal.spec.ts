@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import fr from '../../messages/fr.json'
 import { buildPortalWorld, sendDeliverable, shareProject } from './helpers/portal'
-import { enterWorkspace } from './helpers/workspace'
+import { enterWorkspace, PASSWORD } from './helpers/workspace'
 
 /**
  * ============================================================================
@@ -143,6 +143,55 @@ test.describe('the client portal', () => {
     }
 
     await world.close()
+  })
+
+  /**
+   * ==========================================================================
+   * A CLIENT WHO SIGNS IN AGAIN MUST STILL REACH THEIR PORTAL.
+   *
+   * The invitation sets the session's active organisation, and the internal
+   * workspace HEALS a session that has lost it. The portal did not: a client
+   * who signed out got a new session with no active organisation,
+   * `requirePortalActor` refused it, and the portal answered 404 — for ever,
+   * because the invitation link is one-shot.
+   *
+   * Found by clicking through the product rather than by a test, which is why
+   * there is now a test.
+   * ==========================================================================
+   */
+  test('lets a client sign in again and still reach their portal', async ({ browser }) => {
+    // Building two worlds and signing in twice does not fit the default budget.
+    test.setTimeout(120_000)
+    const world = await buildPortalWorld(browser, 'portal-resignin')
+
+    try {
+      await shareProject(world.agencyPage, 'Projet partagé', world.clientName)
+
+      const client = world.clientPage
+      await client.goto('/fr/portal/projects')
+      await expect(client.getByRole('main')).toContainText('Projet partagé')
+
+      /**
+       * A SECOND sign-in: another device, or a session that expired. Better
+       * Auth creates a new session row, and that row has no active
+       * organisation on it — which is exactly the state this test exists for.
+       * (Clearing the cookies is how a test reaches it; there is no sign-out
+       * control in the product yet.)
+       */
+      await client.context().clearCookies()
+
+      await client.goto('/fr/sign-in')
+      await client.getByLabel(fr.auth.signIn.email).fill(world.contactEmail)
+      await client.getByLabel(fr.auth.signIn.password).fill(PASSWORD)
+      await client.getByRole('button', { name: fr.auth.signIn.submit }).click()
+      await expect(client).not.toHaveURL(/\/sign-in/)
+
+      await client.goto('/fr/portal/projects')
+      await expect(client.getByRole('heading', { level: 1 })).toHaveText(fr.portal.projects.title)
+      await expect(client.getByRole('main')).toContainText('Projet partagé')
+    } finally {
+      await world.close()
+    }
   })
 
   test('gives an internal member 404 on the portal', async ({ page }) => {

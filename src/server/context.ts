@@ -4,9 +4,10 @@ import { and, eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { clientUserAccess, memberships, users } from '@/db/schema'
-import { withTenant } from '@/db/tenant'
+import { withTenant, withUserLookup } from '@/db/tenant'
 import { isLocale } from '@/i18n/routing'
 import { auth } from '@/lib/auth/config'
+import { setActiveOrganization } from '@/lib/auth/session-store'
 import { AppError } from '@/lib/errors/app-error'
 import type { Actor, ClientActor } from '@/lib/permissions'
 
@@ -132,11 +133,29 @@ export async function requireActor(): Promise<Actor> {
 export async function requirePortalActor(): Promise<ClientActor> {
   const session = await requireSession()
 
-  if (!session.activeOrganizationId) {
+  /**
+   * A session with no active organisation is REPAIRED here, not refused.
+   *
+   * Accepting an invitation sets the active organisation on the session that
+   * accepted it. Every later sign-in — another device, an expired cookie —
+   * creates a new session row with none, and the portal then answered 404 to a
+   * client whose access was perfectly valid. Permanently, because an
+   * invitation link is one-shot.
+   *
+   * The repair lives HERE rather than in the portal layout because layouts and
+   * pages render in PARALLEL: a layout that healed the session would still lose
+   * the race against the page's own query. This is the one place every portal
+   * read passes through, so it is the only place the repair can be complete.
+   *
+   * It widens nothing. The organisation still comes from the user's own
+   * membership rows, never from the URL, and every check below still runs.
+   */
+  const organizationId =
+    session.activeOrganizationId ?? (await adoptClientOrganization(session.userId))
+
+  if (!organizationId) {
     throw new AppError('not_found', 'errors.not_found')
   }
-
-  const organizationId = session.activeOrganizationId
 
   const rows = await withTenant({ organizationId }, async (db) => {
     const membership = await db
@@ -178,6 +197,39 @@ export async function requirePortalActor(): Promise<ClientActor> {
     locale: isLocale(rows.membership.locale) ? rows.membership.locale : 'fr',
     clientIds,
   }
+}
+
+/**
+ * The organisation a client contact belongs to, when their session does not
+ * say. Written back to the session so the next request costs nothing.
+ *
+ * Only `client` memberships: the same person may be internal at their own
+ * agency and a client contact at another (ADR-023), and adopting the wrong one
+ * would put them in the wrong place.
+ */
+async function adoptClientOrganization(userId: string): Promise<string | null> {
+  const rows = await withUserLookup(userId, (db) =>
+    db
+      .select({ organizationId: memberships.organizationId })
+      .from(memberships)
+      .where(
+        and(
+          eq(memberships.userId, userId),
+          eq(memberships.status, 'active'),
+          eq(memberships.role, 'client'),
+        ),
+      )
+      .orderBy(memberships.organizationId)
+      .limit(1),
+  )
+
+  const organizationId = rows[0]?.organizationId
+  if (!organizationId) return null
+
+  // Re-checks the membership itself, so this is a persistence step and not a
+  // second grant.
+  await setActiveOrganization(userId, organizationId)
+  return organizationId
 }
 
 /** For portal pages: an anonymous visitor is sent to sign-in, not to a 500. */

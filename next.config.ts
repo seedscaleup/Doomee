@@ -19,7 +19,19 @@ const nextConfig: NextConfig = {
    * files and uses Node streams. Bundling it into the server chunks rewrites
    * those requires and breaks them.
    */
-  serverExternalPackages: ['@react-pdf/renderer'],
+  /**
+   * `pino-pretty` is a pino TRANSPORT: pino runs it in a worker thread whose
+   * entry point is a path on disk. Bundled into the server chunks, that path
+   * becomes `.next/server/vendor-chunks/lib/worker.js`, which does not exist —
+   * the worker dies, and in `next dev` it takes every request with it:
+   *
+   *   Cannot find module '…/.next/server/vendor-chunks/lib/worker.js'
+   *
+   * `pnpm start:standalone` was unaffected (the pretty transport is
+   * development-only), which is why the E2E suite never saw it and `pnpm dev`
+   * answered 500 to every sign-in.
+   */
+  serverExternalPackages: ['@react-pdf/renderer', 'pino', 'pino-pretty'],
   /**
    * PDFKit loads its standard fonts by BUILDING A PATH AT RUNTIME, so Next's
    * dependency tracer cannot see them and leaves them out of the standalone
