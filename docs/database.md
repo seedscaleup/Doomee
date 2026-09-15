@@ -436,23 +436,51 @@ Index : `(organization_id, project_id, status)`, `(organization_id, assignee_id,
 
 ### `deliverables`
 `id` · `organization_id` · `project_id` · `action_id` NULL · `title` · `description` ·
-`deliverable_type_id` FK · `status deliverable_status DEFAULT 'draft'` · `owner_user_id` ·
-`current_version_id` NULL · `due_date` · `is_client_visible` · `sent_to_client_at` ·
-`approved_at` · `approved_by` · `published_at` · `external_url text NULL` *(type lien / site web)*
+`deliverable_type_id` **FK simple** (type système = `organization_id NULL`, ADR-051) ·
+`status deliverable_status DEFAULT 'draft'` · `owner_user_id` ·
+`current_version_id` NULL · `due_date` · `is_client_visible DEFAULT false` · `sent_to_client_at` ·
+`approved_at` · `approved_by` · `published_at` · `external_url text NULL` *(livrable qui EST un lien)* ·
+`created_by` · `updated_by` · `created_at` · `updated_at` · `deleted_at`
 
-Machine à états (garantie par le service, testée) :
-`draft → production → internal_review → {production | client_review}` ·
-`client_review → {approved | changes_requested}` · `changes_requested → production` · `approved → published`
+Machine à états, garantie par le service pur et **jamais** par une liste déroulante.
+Chaque transition porte son **côté** — qui a le droit de la faire (ADR-056) :
+
+| Depuis | Vers | Côté |
+|---|---|---|
+| `draft` | `production` | interne |
+| `production` | `internal_review` · `draft` | interne |
+| `internal_review` | `client_review` · `production` | interne |
+| `client_review` | `approved` · `changes_requested` | **client** |
+| `changes_requested` | `production` | interne |
+| `approved` | `published` | interne |
+| `published` | — | *terminal* |
+
+> **Neuf transitions, pas une de plus.** Le test unitaire balaie 7 états × 7 cibles × 2 côtés et
+> fige la liste : une transition ajoutée par inadvertance fait échouer la suite.
+>
+> `current_version_id` est **dénormalisé** (ADR-013) et écrit dans la **même transaction** que la
+> version qu'il nomme (ADR-059).
 
 ### `deliverable_versions`
-`id` · `organization_id` · `deliverable_id` · `version int` · `file_id` NULL · `external_url` NULL ·
-`notes` · `created_by` · `created_at` — **UNIQUE (organization_id, deliverable_id, version)**
+`id` · `organization_id` · `deliverable_id` · `version int` · `file_id` NULL *(FK composite vers `files`)* ·
+`external_url` NULL · `notes` · `created_by` · `created_at`
+— **UNIQUE (organization_id, deliverable_id, version)**
+
+> Une version porte un **fichier ou un lien**, jamais ni l'un ni l'autre (ADR-060).
+> **`REVOKE UPDATE`** : on corrige une version en téléversant la suivante (ADR-058).
 
 ### `deliverable_reviews`
-`id` · `organization_id` · `deliverable_id` · `version_id` · `scope review_scope` ·
+`id` · `organization_id` · `deliverable_id` · `version_id` **NOT NULL** · `scope review_scope` ·
 `decision review_decision` · `comment text` · `reviewer_user_id` · `created_at`
-→ Une demande de modification client crée une ligne `scope='client'`, `decision='changes_requested'`,
-**rattachée à la version exacte** et convertie en commentaire partagé.
+
+> Une demande de modification client crée une ligne `scope='client'`,
+> `decision='changes_requested'`, **rattachée à la version exacte** — sans quoi elle cesse de vouloir
+> dire quelque chose dès la version suivante. Le commentaire est **obligatoire** dans ce cas.
+> **`REVOKE UPDATE`** : une décision prise reste prise (ADR-058).
+
+### `deliverable_types` — taxonomie partagée
+Même forme que toutes les autres (ADR-010) : `organization_id NULL` = ligne système, lisible de
+tous, modifiable par personne. 10 types seedés.
 
 ### `results` — le cœur du produit
 | Colonne | Type | Notes |

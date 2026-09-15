@@ -209,16 +209,25 @@ les agrégats (vérifié par mutation).
 
 ---
 
-## LOT 8 — Fichiers, livrables, validation · *critères MVP 7, 8*
-1. Stockage R2 : upload par URL pré-signée, `files`, `attachments`, téléchargement contrôlé (R13).
-2. Schéma `deliverables`, `deliverable_versions`, `deliverable_reviews` + taxonomie `deliverable_types`.
-3. Machine à états du livrable (service pur, toutes transitions testées, transitions illégales refusées).
-4. Écran livrable : aperçu, versions, historique des revues, commentaires.
-5. Validation **interne** par le manager.
-6. Envoi en validation client + `is_client_visible`.
-7. Demande de modification → rattachement à la version + commentaire partagé + notification.
+## LOT 8 — Fichiers, livrables, validation · *critères MVP 7, 8* — ✅ **terminé**
+1. ✅ Stockage : `files`, `attachments`, `StorageAdapter` (filesystem **et** S3), lien signé ≤ 5 min après contrôle de permission (R13) — livré aux LOTS 3 et 5, réutilisé tel quel par les versions de livrables.
+2. ✅ Schéma `deliverables`, `deliverable_versions`, `deliverable_reviews` + taxonomie `deliverable_types` (10 types seedés), RLS et isolation générée.
+3. ✅ **Machine à états pure** : 7 états, **9 transitions légales**, chacune portant son *côté* (`internal` / `client`). Balayage exhaustif 7 × 7 × 2 en test unitaire ; le refus distingue `wrong_side` d'`illegal` (ADR-056).
+4. ✅ Écran livrable à onglets : aperçu, versions, historique des validations, activité.
+5. ✅ Validation **interne** par le manager, enregistrée contre la version exacte — et qui **n'envoie rien** : envoyer reste un acte distinct.
+6. ✅ Envoi en validation client : c'est **l'acte d'envoyer** qui pose `is_client_visible`. Deux conditions pour qu'un client voie un livrable (ADR-057).
+7. ✅ Demande de modification → rattachée à la version exacte, commentaire **obligatoire**, événement d'activité partagé.
 
-✅ **Sortie** : E2E interne du cycle livrable jusqu'à `client_review`.
+✅ **Sortie** : E2E du cycle livrable jusqu'à `client_review` ✅ FR + EN, plus la preuve que l'équipe
+interne n'a **aucun** bouton de validation une fois le livrable chez le client, et le 404 sur un
+livrable d'une autre organisation.
+
+> `deliverable_versions` et `deliverable_reviews` sont en **écriture seule** (`REVOKE UPDATE`) :
+> une itération se corrige en téléversant la suivante, une décision prise reste prise (ADR-058).
+> Le téléversement d'un **fichier** de version réutilisera le composant d'upload du LOT 3 ;
+> une version porte aujourd'hui un lien, et le modèle accepte déjà `file_id`.
+> Les actions du **client** (`✓ Valider` / `↻ Demander des modifications`) s'exercent depuis le
+> portail, au LOT 9 : `reviewAsClient` existe et est gardée par `deliverable.approve`.
 
 ---
 

@@ -154,3 +154,34 @@ export const entityType = pgEnum('entity_type', [
   'meeting',
   'milestone',
 ])
+
+/**
+ * ============================================================================
+ * DELIVERABLES (LOT 8)
+ * ============================================================================
+ */
+
+/**
+ * A deliverable's life, as a state machine — so an enum, not a reference table
+ * (ADR-010). The transitions are enforced by the pure service; the enum only
+ * says which words exist.
+ *
+ * `client_review` is the one state the internal team cannot leave on its own:
+ * only the client approves or asks for changes. That asymmetry is the point of
+ * the whole lot, and it is written into the permission matrix rather than here.
+ */
+export const deliverableStatus = pgEnum('deliverable_status', [
+  'draft',
+  'production',
+  'internal_review',
+  'client_review',
+  'changes_requested',
+  'approved',
+  'published',
+])
+
+/** Who is reviewing: the team, or the client. Two different bars to clear. */
+export const reviewScope = pgEnum('review_scope', ['internal', 'client'])
+
+/** What a review concluded. */
+export const reviewDecision = pgEnum('review_decision', ['approved', 'changes_requested'])

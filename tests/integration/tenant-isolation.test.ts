@@ -184,6 +184,47 @@ const FIXTURES: Record<string, Fixture> = {
       return id
     },
   },
+  deliverables: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const projectId = await FIXTURES.projects?.seed(query, organizationId)
+      await query(
+        'INSERT INTO deliverables (id, organization_id, project_id, title) VALUES ($1, $2, $3, $4)',
+        [id, organizationId, projectId, 'Livrable'],
+      )
+      return id
+    },
+  },
+  deliverable_versions: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const deliverableId = await FIXTURES.deliverables?.seed(query, organizationId)
+      await query(
+        `INSERT INTO deliverable_versions
+           (id, organization_id, deliverable_id, version, external_url)
+         VALUES ($1, $2, $3, 1, 'https://example.test/v1')`,
+        [id, organizationId, deliverableId],
+      )
+      return id
+    },
+  },
+  deliverable_reviews: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const versionId = await FIXTURES.deliverable_versions?.seed(query, organizationId)
+      const { rows } = (await query(
+        'SELECT deliverable_id FROM deliverable_versions WHERE id = $1',
+        [versionId],
+      )) as { rows: { deliverable_id: string }[] }
+      await query(
+        `INSERT INTO deliverable_reviews
+           (id, organization_id, deliverable_id, version_id, scope, decision)
+         VALUES ($1, $2, $3, $4, 'internal', 'approved')`,
+        [id, organizationId, rows[0]?.deliverable_id, versionId],
+      )
+      return id
+    },
+  },
   objectives: {
     seed: async (query, organizationId) => {
       const id = newId()
@@ -293,7 +334,15 @@ const FIXTURES: Record<string, Fixture> = {
  *   metric rows inside one transaction, and that is a rewrite of the SET, not
  *   of a measurement.
  */
-const NO_UPDATE = new Set(['activity_events', 'result_metrics'])
+const NO_UPDATE = new Set([
+  'activity_events',
+  'result_metrics',
+  // A review is a decision that was MADE. "The client approved version 3 on the
+  // 14th" has to stay true, or the validation trail is worth nothing. A version
+  // is the same kind of fact: correcting it means uploading the next one.
+  'deliverable_reviews',
+  'deliverable_versions',
+])
 const NO_DELETE = new Set(['activity_events'])
 
 /** Drizzle wraps driver errors; the useful message is on the cause. */

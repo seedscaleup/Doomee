@@ -18,6 +18,12 @@ export type ActivityRow = {
 const listSchema = z.object({
   clientId: z.uuid().optional(),
   projectId: z.uuid().optional(),
+  /**
+   * One entity's own history. Narrower than `projectId`: a deliverable's page
+   * shows what happened to THAT deliverable, not everything that happened on
+   * the project around it.
+   */
+  entityId: z.uuid().optional(),
   /** Cursor pagination: never OFFSET on an append-only table (ADR-022). */
   before: z.coerce.date().optional(),
   limit: z.number().int().min(1).max(100).default(30),
@@ -30,6 +36,7 @@ export const listActivity = defineQuery({
     const filters = [
       input.clientId ? eq(activityEvents.clientId, input.clientId) : undefined,
       input.projectId ? eq(activityEvents.projectId, input.projectId) : undefined,
+      input.entityId ? eq(activityEvents.entityId, input.entityId) : undefined,
       input.before ? lt(activityEvents.createdAt, input.before) : undefined,
     ].filter((clause) => clause !== undefined)
 

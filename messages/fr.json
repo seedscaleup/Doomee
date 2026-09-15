@@ -43,7 +43,17 @@
     "upload_unsupported_type": "Format non accepté : PNG, JPEG ou WebP uniquement.",
     "project_owner_is_member": "Changez d'abord le responsable du projet.",
     "blocked_reason_required": "Indiquez pourquoi cette action est bloquée.",
-    "result_values_invalid": "Une valeur ne correspond pas à ce que le formulaire attend."
+    "result_values_invalid": "Une valeur ne correspond pas à ce que le formulaire attend.",
+    "url_scheme": "Le lien doit commencer par http:// ou https://.",
+    "version_needs_content": "Une version doit porter un fichier ou un lien.",
+    "nothing_to_send": "Ajoutez une version avant d'envoyer au client.",
+    "nothing_to_review": "Il n'y a aucune version à valider.",
+    "changes_reason_required": "Dites ce qui doit être modifié.",
+    "deliverable_wrong_side": "Cette décision appartient au client.",
+    "deliverable_published": "Un livrable publié ne change plus d'état.",
+    "deliverable_transition_illegal": "Ce changement d'état n'est pas permis.",
+    "deliverable_not_found": "Ce livrable est introuvable.",
+    "file_not_found": "Ce fichier est introuvable."
   },
   "notFound": {
     "title": "Page introuvable",
@@ -182,7 +192,8 @@
     "mainNavigation": "Navigation principale",
     "commandPalette": "Aller à…",
     "commandPaletteHint": "⌘K",
-    "noResults": "Aucun résultat."
+    "noResults": "Aucun résultat.",
+    "deliverables": "Livrables"
   },
   "settings": {
     "title": "Paramètres",
@@ -452,6 +463,19 @@
     "result": {
       "recorded": "{actor} a saisi des résultats pour {name}",
       "deleted": "{actor} a supprimé un résultat de {name}"
+    },
+    "deliverable": {
+      "created": "{actor} a créé le livrable {name}",
+      "version_added": "{actor} a ajouté la version {version}",
+      "production": "{actor} a mis {name} en production",
+      "draft": "{actor} a renvoyé {name} au brouillon",
+      "internal_review": "{actor} a envoyé {name} en validation interne",
+      "client_review": "{actor} a envoyé {name} au client",
+      "published": "{actor} a publié {name}",
+      "internal_approved": "{actor} a validé la version {version} en interne",
+      "internal_changes_requested": "{actor} a demandé des modifications sur la version {version}",
+      "client_approved": "{actor} a validé la version {version}",
+      "client_changes_requested": "{actor} a demandé des modifications sur la version {version}"
     }
   },
   "projects": {
@@ -822,6 +846,90 @@
       "unranked": "Cette métrique n'a pas de sens meilleur : elle est affichée sans classement.",
       "none": "Pas assez de projets mesurés sur cette période pour comparer.",
       "samples": "{count} mesure(s)"
+    }
+  },
+  "deliverables": {
+    "title": "Livrables",
+    "description": "Ce que le travail produit, de la première version à la validation.",
+    "new": "+ Nouveau livrable",
+    "emptyTitle": "Aucun livrable pour l’instant",
+    "emptyDescription": "Un livrable, c'est ce que le client reçoit vraiment.",
+    "noneForFilter": "Aucun livrable ne correspond à ces filtres.",
+    "back": "← Retour aux livrables",
+    "versionCount": "{count} version(s)",
+    "currentVersion": "Version {version}",
+    "noVersion": "Aucune version",
+    "form": {
+      "createTitle": "Nouveau livrable",
+      "editTitle": "Modifier le livrable",
+      "name": "Titre",
+      "namePlaceholder": "Ex. Charte graphique — v1",
+      "project": "Projet",
+      "type": "Type",
+      "owner": "Responsable",
+      "dueDate": "Échéance",
+      "description": "Description",
+      "externalUrl": "Lien",
+      "noType": "Sans type",
+      "failed": "Impossible d’enregistrer ce livrable.",
+      "isClientVisible": "Visible par le client"
+    },
+    "filters": {
+      "all": "Tous",
+      "project": "Projet",
+      "status": "Statut",
+      "search": "Rechercher"
+    },
+    "tabs": {
+      "overview": "Aperçu",
+      "versions": "Versions",
+      "reviews": "Validations",
+      "activity": "Activité"
+    },
+    "versions": {
+      "title": "Versions",
+      "add": "+ Ajouter une version",
+      "addTitle": "Nouvelle version",
+      "notes": "Notes",
+      "file": "Fichier",
+      "link": "Lien",
+      "open": "Ouvrir",
+      "download": "Télécharger",
+      "by": "par {name}",
+      "empty": "Aucune version. Ajoutez-en une avant d’envoyer au client.",
+      "needsContent": "Une version doit porter un fichier ou un lien."
+    },
+    "reviews": {
+      "title": "Historique des validations",
+      "empty": "Aucune validation pour l’instant.",
+      "internal": "Interne",
+      "client": "Client",
+      "approved": "Validé",
+      "changes_requested": "Modifications demandées",
+      "onVersion": "sur la version {version}",
+      "internalTitle": "Validation interne",
+      "approve": "✓ Valider",
+      "requestChanges": "↻ Demander des modifications",
+      "comment": "Commentaire",
+      "commentRequired": "Dites ce qui doit être modifié."
+    },
+    "flow": {
+      "title": "Étape suivante",
+      "production": "Passer en production",
+      "draft": "Renvoyer au brouillon",
+      "internal_review": "Envoyer en validation interne",
+      "client_review": "Envoyer au client",
+      "published": "Publier",
+      "waitingClient": "En attente de la décision du client.",
+      "clientOnly": "Seul le client peut valider ou demander des modifications.",
+      "done": "Ce livrable est publié.",
+      "failed": "Impossible de changer l’état de ce livrable."
+    },
+    "delete": {
+      "action": "Supprimer",
+      "title": "Supprimer ce livrable ?",
+      "description": "Ses versions et son historique de validation partent avec lui.",
+      "confirm": "Supprimer"
     }
   }
 }

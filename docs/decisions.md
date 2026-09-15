@@ -1552,6 +1552,158 @@ dans `CLAUDE.md` correspond à une commande qui échoue.
 
 ---
 
+## ADR-056 — Seul le client valide, et le produit ne peut pas faire autrement
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 8
+
+**Contexte.** Une agence qui peut valider son propre travail à la place de son
+client n'a pas construit une étape de validation, elle a construit une case à
+cocher. C'est pourtant la pente naturelle : le manager « sait » que le client
+sera d'accord, et l'écran lui offre le bouton.
+
+**Décision.** L'asymétrie est écrite **trois fois**, à trois niveaux, et chacune
+suffirait seule :
+
+| Niveau | Mécanisme |
+|---|---|
+| Matrice | `deliverable.approve` et `deliverable.request_changes` → `['client']`, et rien d'autre |
+| Machine à états | chaque transition porte son **côté** (`internal` / `client`) ; les deux sorties de `client_review` appartiennent au client |
+| Écran | en `client_review`, l'équipe interne ne voit **aucun bouton** — pas un bouton grisé, aucun — et une phrase qui dit à qui appartient la décision |
+
+Le refus distingue `wrong_side` d'`illegal` : « vous ne pouvez pas valider à la
+place du client » et « un brouillon ne se publie pas » sont deux problèmes
+différents, et les confondre ferait passer le premier pour un bug (ADR-041).
+
+**La réciproque est vraie aussi** : un client ne peut pas piloter le flux
+interne. `draft → production`, `→ internal_review`, `→ published` lui sont
+fermés.
+
+**Une validation interne n'envoie rien.** `statusAfterReview('internal', 'approved')`
+laisse le livrable en `internal_review` : le « c'est bon pour moi » d'un manager
+ne doit pas atterrir tout seul dans le portail du client. Envoyer est un acte
+**distinct et délibéré**, et c'est cet acte qui pose `is_client_visible`.
+
+**Ce qui empêche la régression.**
+`tests/unit/deliverables-service.test.ts` balaie **exhaustivement** les 7 états ×
+7 cibles × 2 côtés et fige la liste des 9 mouvements légaux : une transition
+ajoutée par inadvertance fait échouer le test au lieu d'arriver en production.
+`tests/unit/permissions.test.ts` — « only the client approves a deliverable » —
+vérifié par mutation : en ajoutant `manager` à `deliverable.approve`, il échoue.
+`tests/e2e/deliverables.spec.ts` vérifie qu'en `client_review` **aucun** bouton
+de validation n'existe sur la page.
+
+---
+
+## ADR-057 — Deux conditions pour qu'un client voie un livrable
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 8
+
+**Contexte.** `is_client_visible` est un drapeau en opt-in (règle 2). Mais un
+drapeau seul ne suffit pas : un brouillon coché par erreur resterait coché, et
+le client verrait un travail non terminé présenté comme un livrable.
+
+**Décision.** `isVisibleToClient` exige **les deux** : le drapeau **et** un état
+qui a du sens à montrer (`client_review`, `changes_requested`, `approved`,
+`published`). Le drapeau est le **consentement**, l'état est la **maturité**, et
+ni l'un ni l'autre ne suffit.
+
+Le drapeau n'est d'ailleurs pas posé par une case à cocher perdue dans un
+formulaire : c'est **l'envoi au client** qui le pose. L'acte et l'exposition sont
+la même décision, prise au même moment, par la même personne.
+
+Cette fonction est la formulation **lisible** de la règle ; c'est la politique
+RLS du portail (LOT 9) qui la rendra **vraie**. L'écran n'a jamais sécurisé quoi
+que ce soit.
+
+**Ce qui empêche la régression.** Le test unitaire balaie les 7 états avec le
+drapeau à `false` (aucun visible) puis les 4 états mûrs avec le drapeau à `true`.
+
+---
+
+## ADR-058 — Une version et une décision ne se réécrivent pas
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 8
+
+**Contexte.** « Quelle version le client a-t-il validée ? » doit avoir une
+réponse des mois plus tard. Une table qui remplace ses lignes ne peut pas en
+donner.
+
+**Décision.** `REVOKE UPDATE ON deliverable_versions FROM app_user` et
+`REVOKE UPDATE ON deliverable_reviews FROM app_user`.
+
+- Une **version** est ce qui a été téléversé sous ce numéro. On la corrige en
+  téléversant la suivante, jamais en la réécrivant.
+- Une **revue** est une décision qui a été prise. Si `UPDATE` était accordé,
+  « le client a validé la version 3 » pourrait devenir « la version 5 » sans
+  laisser de trace, et la piste d'audit ne vaudrait plus rien.
+
+`DELETE` reste accordé : supprimer un livrable emporte son historique, et c'est
+voulu. C'est la même distinction que pour `result_metrics` (ADR-022).
+
+`deliverable_reviews.version_id` est **obligatoire** : une demande de
+modification qui ne nomme pas sa version cesse de vouloir dire quelque chose dès
+que la suivante est téléversée.
+
+**Ce qui empêche la régression.** `tests/integration/deliverables.test.ts` : la
+suite d'isolation généralisée liste les deux tables dans `NO_UPDATE`, et deux
+tests ciblés vérifient le message exact — `permission denied for table
+deliverable_versions` — en lisant la **cause** de l'erreur, pas l'enveloppe
+« Failed query » dans laquelle Drizzle l'emballe (une assertion sur l'enveloppe
+passerait pour n'importe quel échec, y compris celui où l'écriture a réussi).
+
+---
+
+## ADR-059 — Le pointeur de version courante s'écrit avec la version qu'il nomme
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 8
+
+**Contexte.** `deliverables.current_version_id` est dénormalisé pour qu'une liste
+n'exécute pas une sous-requête corrélée par ligne (ADR-013). Un pointeur
+dénormalisé est un pointeur qui peut mentir.
+
+**Décision.** La ligne de version et le pointeur qui la nomme sont écrits dans
+**une seule transaction**. Un `current_version_id` qui désigne une ligne
+inexistante est une page de détail qui plante ; une version orpheline est une
+itération que personne ne retrouve.
+
+Le **numéro** de version, lui, n'est pas un compteur sur le parent :
+`nextVersionNumber` le calcule depuis les lignes existantes. Un compteur qui vit
+à côté des lignes qu'il compte est un compteur qui dérive.
+
+**Ce qui empêche la régression.** Un test d'intégration insère une version,
+déplace le pointeur, puis lève une erreur : après le `ROLLBACK`, le pointeur est
+inchangé **et** la version n'existe pas.
+
+---
+
+## ADR-060 — Une version doit être quelque chose
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 8
+
+**Contexte.** Le modèle autorise un fichier **ou** un lien : une charte
+graphique est un PDF, un site livré est une URL. Rien n'empêchait, mécaniquement,
+une ligne qui ne porte ni l'un ni l'autre.
+
+**Décision.** `describesSomething()` — pur — exige au moins l'un des deux, et la
+mutation refuse avec `errors.version_needs_content`. Une version vide est une
+promesse vide : le client l'ouvre, ne trouve rien, et la validation qu'elle
+déclenche est la validation de rien.
+
+La règle vit dans le **service**, pas dans le schéma Zod : « une version doit
+être quelque chose » est une règle **produit**, pas une règle d'analyse
+syntaxique. Le formulaire la vérifie aussi, pour répondre vite — mais c'est le
+serveur qui décide.
+
+Les liens sont validés en `http`/`https` uniquement. Un `javascript:` dans un
+`href` est une faille XSS qui attend un clic.
+
+**Ce qui empêche la régression.** Le test unitaire couvre les quatre cas (rien,
+`null` des deux côtés, une chaîne d'espaces, un vrai lien) ; l'E2E soumet le
+formulaire vide et vérifie que la feuille **reste ouverte**, c'est-à-dire que
+rien n'a été créé.
+
+---
+
 ## Décisions tranchées avec le commanditaire — 2026-09-14
 
 | # | Sujet | Décision | ADR |

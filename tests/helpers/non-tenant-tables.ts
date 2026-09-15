@@ -33,4 +33,5 @@ export const SHARED_TAXONOMY_TABLES = new Set([
   'metrics',
   'result_form_templates',
   'result_form_fields',
+  'deliverable_types',
 ])

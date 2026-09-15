@@ -7,6 +7,7 @@ import {
   CHANNEL_SEED,
   type TaxonomySeed,
 } from '@/db/seed/action-taxonomies'
+import { DELIVERABLE_TYPE_SEED } from '@/db/seed/deliverable-taxonomies'
 import { INDUSTRY_SEED } from '@/db/seed/industries'
 import { METRIC_SEED } from '@/db/seed/metrics'
 import { OBJECTIVE_TYPE_SEED } from '@/db/seed/objective-taxonomies'
@@ -20,6 +21,7 @@ const TAXONOMIES: readonly { table: string; entries: readonly TaxonomySeed[] }[]
   { table: 'channels', entries: CHANNEL_SEED },
   { table: 'objective_types', entries: OBJECTIVE_TYPE_SEED },
   { table: 'metrics', entries: METRIC_SEED },
+  { table: 'deliverable_types', entries: DELIVERABLE_TYPE_SEED },
 ]
 
 /**

@@ -29,10 +29,10 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | **LOT 7 terminé et vérifié** — `pnpm verify` vert. CHECKPOINT 1 (LOT 0 → 5) validé le 2026-09-15 |
+| **Phase actuelle** | **LOT 8 terminé et vérifié** — `pnpm verify` vert. CHECKPOINT 1 (LOT 0 → 5) validé le 2026-09-15 |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | **La boucle est fermée** : `results` · `result_metrics` · `result_notes`, gabarits de formulaire **en base** (ADR-050), métriques dérivées qui s'abstiennent au lieu d'inventer un zéro (ADR-052), `objectives.current_value` recalculé **dans la transaction du résultat** (ADR-053), vue matérialisée `result_metrics_daily` (ADR-054), podium par projet classé selon la *direction* de la métrique |
-| **Prochaine étape** | **LOT 8 — fichiers, livrables, validation.** Aucune décision ouverte ne le bloque |
+| **Dernier jalon** | Livrables : `deliverables` · `deliverable_versions` · `deliverable_reviews`, machine à états **à deux côtés** — seul le client valide, écrit trois fois et prouvé par mutation (ADR-056) ; versions et revues en **écriture seule** (ADR-058) |
+| **Prochaine étape** | **LOT 9 — portail client 🔒** (deuxième lot critique en sécurité). **O9 à trancher** : le client peut-il commenter une *action*, ou seulement un livrable et un rapport ? |
 | **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md` |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
@@ -276,6 +276,8 @@ pnpm verify           # tout, dans l'ordre de la CI
 | ❌ Un scan `axe` sans vérifier quelle page est rendue | → il passe sur un 404 ; assertion du titre exact d'abord |
 | ❌ Une page `dev` gardée par `NODE_ENV` seul | → elle est pré-rendue au build ; utiliser `devPagesEnabled()` + `force-dynamic` |
 | ❌ Une entrée de menu vers une route inexistante | → `planned: true` dans `NAV_ENTRIES`, retiré par le lot qui la crée |
+| ❌ Assertion sur l'enveloppe « Failed query » de Drizzle | → elle passe pour **n'importe quel** échec, y compris « l'écriture a réussi et autre chose a cassé ». Lire la `cause` |
+| ❌ Un drapeau `is_client_visible` sans condition d'**état** | → un brouillon coché par erreur resterait coché. Consentement **et** maturité (ADR-057) |
 | ❌ Une règle écrite dans `CLAUDE.md` sans commande qui échoue | → elle a déjà cessé d'être vraie. Le seuil de couverture est resté décoratif sept lots (ADR-055) |
 | ❌ Déclarer `coverage` dans un `projects[]` de Vitest | → silencieusement ignoré ; c'est une option **racine** (ADR-055) |
 | ❌ Une clé étrangère **composite** vers une table de référence partagée | → ses lignes système ont `organization_id NULL` : la contrainte est inapplicable, pas stricte. Clé **simple** (ADR-051) |

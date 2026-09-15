@@ -6,6 +6,7 @@ import {
   actionCategories,
   actionTypes,
   channels,
+  deliverableTypes,
   industries,
   metrics,
   objectiveTypes,
@@ -13,6 +14,7 @@ import {
   resultFormTemplates,
 } from '../schema'
 import { ACTION_CATEGORY_SEED, ACTION_TYPE_SEED, CHANNEL_SEED } from './action-taxonomies'
+import { DELIVERABLE_TYPE_SEED } from './deliverable-taxonomies'
 import { INDUSTRY_SEED } from './industries'
 import { METRIC_SEED } from './metrics'
 import { OBJECTIVE_TYPE_SEED } from './objective-taxonomies'
@@ -37,6 +39,7 @@ type TaxonomyTable =
   | typeof actionCategories
   | typeof channels
   | typeof objectiveTypes
+  | typeof deliverableTypes
 
 const TABLES: readonly { table: TaxonomyTable; entries: readonly TaxonomyEntry[] }[] = [
   { table: industries, entries: INDUSTRY_SEED },
@@ -44,6 +47,7 @@ const TABLES: readonly { table: TaxonomyTable; entries: readonly TaxonomyEntry[]
   { table: actionCategories, entries: ACTION_CATEGORY_SEED },
   { table: channels, entries: CHANNEL_SEED },
   { table: objectiveTypes, entries: OBJECTIVE_TYPE_SEED },
+  { table: deliverableTypes, entries: DELIVERABLE_TYPE_SEED },
 ]
 
 /**

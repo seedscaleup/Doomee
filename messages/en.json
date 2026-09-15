@@ -43,7 +43,17 @@
     "upload_unsupported_type": "Unsupported format: PNG, JPEG or WebP only.",
     "project_owner_is_member": "Change the project owner first.",
     "blocked_reason_required": "Say why this action is blocked.",
-    "result_values_invalid": "A value does not match what the form expects."
+    "result_values_invalid": "A value does not match what the form expects.",
+    "url_scheme": "The link must start with http:// or https://.",
+    "version_needs_content": "A version must carry a file or a link.",
+    "nothing_to_send": "Add a version before sending it to the client.",
+    "nothing_to_review": "There is no version to review.",
+    "changes_reason_required": "Say what needs changing.",
+    "deliverable_wrong_side": "That decision belongs to the client.",
+    "deliverable_published": "A published deliverable no longer changes state.",
+    "deliverable_transition_illegal": "That change of state is not allowed.",
+    "deliverable_not_found": "This deliverable cannot be found.",
+    "file_not_found": "This file cannot be found."
   },
   "notFound": {
     "title": "Page not found",
@@ -182,7 +192,8 @@
     "mainNavigation": "Main navigation",
     "commandPalette": "Go to…",
     "commandPaletteHint": "⌘K",
-    "noResults": "No results."
+    "noResults": "No results.",
+    "deliverables": "Deliverables"
   },
   "settings": {
     "title": "Settings",
@@ -452,6 +463,19 @@
     "result": {
       "recorded": "{actor} recorded results for {name}",
       "deleted": "{actor} deleted a result of {name}"
+    },
+    "deliverable": {
+      "created": "{actor} created the deliverable {name}",
+      "version_added": "{actor} added version {version}",
+      "production": "{actor} moved {name} into production",
+      "draft": "{actor} sent {name} back to draft",
+      "internal_review": "{actor} sent {name} for internal review",
+      "client_review": "{actor} sent {name} to the client",
+      "published": "{actor} published {name}",
+      "internal_approved": "{actor} approved version {version} internally",
+      "internal_changes_requested": "{actor} requested changes on version {version}",
+      "client_approved": "{actor} approved version {version}",
+      "client_changes_requested": "{actor} requested changes on version {version}"
     }
   },
   "projects": {
@@ -822,6 +846,90 @@
       "unranked": "This metric has no better end: it is listed without a ranking.",
       "none": "Not enough measured projects in this window to compare.",
       "samples": "{count} measurement(s)"
+    }
+  },
+  "deliverables": {
+    "title": "Deliverables",
+    "description": "What the work produces, from first draft to sign-off.",
+    "new": "+ New deliverable",
+    "emptyTitle": "No deliverables yet",
+    "emptyDescription": "A deliverable is what the client actually receives.",
+    "noneForFilter": "No deliverable matches these filters.",
+    "back": "← Back to deliverables",
+    "versionCount": "{count} version(s)",
+    "currentVersion": "Version {version}",
+    "noVersion": "No version",
+    "form": {
+      "createTitle": "New deliverable",
+      "editTitle": "Edit deliverable",
+      "name": "Title",
+      "namePlaceholder": "e.g. Brand guidelines — v1",
+      "project": "Project",
+      "type": "Type",
+      "owner": "Owner",
+      "dueDate": "Due date",
+      "description": "Description",
+      "externalUrl": "Link",
+      "noType": "No type",
+      "failed": "This deliverable could not be saved.",
+      "isClientVisible": "Visible to the client"
+    },
+    "filters": {
+      "all": "All",
+      "project": "Project",
+      "status": "Status",
+      "search": "Search"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "versions": "Versions",
+      "reviews": "Reviews",
+      "activity": "Activity"
+    },
+    "versions": {
+      "title": "Versions",
+      "add": "+ Add a version",
+      "addTitle": "New version",
+      "notes": "Notes",
+      "file": "File",
+      "link": "Link",
+      "open": "Open",
+      "download": "Download",
+      "by": "by {name}",
+      "empty": "No version yet. Add one before sending it to the client.",
+      "needsContent": "A version must carry a file or a link."
+    },
+    "reviews": {
+      "title": "Review history",
+      "empty": "No review yet.",
+      "internal": "Internal",
+      "client": "Client",
+      "approved": "Approved",
+      "changes_requested": "Changes requested",
+      "onVersion": "on version {version}",
+      "internalTitle": "Internal review",
+      "approve": "✓ Approve",
+      "requestChanges": "↻ Request changes",
+      "comment": "Comment",
+      "commentRequired": "Say what needs changing."
+    },
+    "flow": {
+      "title": "Next step",
+      "production": "Move into production",
+      "draft": "Send back to draft",
+      "internal_review": "Send for internal review",
+      "client_review": "Send to the client",
+      "published": "Publish",
+      "waitingClient": "Waiting on the client’s decision.",
+      "clientOnly": "Only the client can approve or request changes.",
+      "done": "This deliverable is published.",
+      "failed": "This deliverable’s state could not be changed."
+    },
+    "delete": {
+      "action": "Delete",
+      "title": "Delete this deliverable?",
+      "description": "Its versions and its review history go with it.",
+      "confirm": "Delete"
     }
   }
 }
