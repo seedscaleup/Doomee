@@ -96,3 +96,27 @@ export type PortalEventRow = {
   params: Record<string, unknown>
   createdAt: string
 }
+
+/** A published report, as a client sees it listed. */
+export type PortalReportRow = {
+  id: string
+  type: string
+  title: string
+  projectId: string | null
+  projectName: string | null
+  periodStart: string
+  periodEnd: string
+  locale: string
+  publishedAt: string | null
+}
+
+export type PortalReportDetail = PortalReportRow & {
+  sections: {
+    id: string
+    key: string
+    sortOrder: number
+    titleOverride: string | null
+    body: string | null
+    data: Record<string, unknown> | null
+  }[]
+}

@@ -2,12 +2,14 @@ export { decideOnDeliverable, postPortalComment } from './mutations'
 export {
   getPortalDeliverable,
   getPortalProject,
+  getPortalReport,
   listMyClients,
   listPortalActivity,
   listPortalComments,
   listPortalDeliverables,
   listPortalObjectives,
   listPortalProjects,
+  listPortalReports,
   listPortalResults,
   listPortalReviews,
 } from './queries'
@@ -20,6 +22,8 @@ export type {
   PortalMetricRow,
   PortalObjectiveRow,
   PortalProjectRow,
+  PortalReportDetail,
+  PortalReportRow,
   PortalResultRow,
   PortalReviewRow,
 } from './types'

@@ -5,6 +5,15 @@ const root = import.meta.dirname
 const SERVER_ONLY_STUB = resolve(root, './tests/helpers/server-only-stub.ts')
 
 export default defineConfig({
+  /**
+   * The report PDF is a React tree (`@react-pdf/renderer`), so the suites that
+   * render one have to compile JSX. Declared once at the root rather than per
+   * project: a unit test that renders a document and an integration test that
+   * exports one must not compile the same file two different ways.
+   */
+  // `tsconfig.json` says `"jsx": "preserve"` because Next compiles the JSX
+  // itself. Vitest has no Next pipeline, so it is told here instead.
+  oxc: { jsx: { runtime: 'automatic' } },
   resolve: { alias: { '@': resolve(root, './src'), 'server-only': SERVER_ONLY_STUB } },
   test: {
     /**
@@ -26,6 +35,10 @@ export default defineConfig({
         'src/modules/**/service.ts',
         'src/modules/results/form-engine.ts',
         'src/modules/results/derived-metrics.ts',
+        // Pure like a service, and the file that decides what a client reads
+        // in a PDF — including the decimal arithmetic ADR-050 exists for.
+        'src/modules/reports/present.ts',
+        'src/modules/reports/tokens.ts',
       ],
       thresholds: { statements: 90, branches: 90, functions: 90, lines: 90 },
       reporter: ['text'],

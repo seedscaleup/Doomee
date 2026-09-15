@@ -2184,6 +2184,148 @@ tableau vide, et qu'une action en retard y apparaît avec son retard.
 
 ---
 
+## ADR-073 — Un rapport se lit dans SA langue, sur les trois surfaces
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 12
+
+**Contexte.** ADR-011 dit déjà que la langue d'un rapport est indépendante de
+celle de l'interface. Le LOT 12 a montré que l'énoncer ne suffit pas : l'éditeur
+traduisait ses propres titres de section avec `useTranslations`, donc avec le
+catalogue du **lecteur**. Une agence française voyait « Résumé exécutif »
+au-dessus d'une section dont le PDF dit *Executive summary* — elle validait un
+document qu'elle n'avait jamais lu.
+
+**Décision.** Les blocs portent des **clés** i18n, jamais des mots, et les mots
+sont résolus **sur le serveur**, dans la langue du rapport, par `resolveLabels`.
+Le résultat est un objet simple qui traverse la frontière serveur/client ; une
+fonction de traduction ne le peut pas.
+
+Trois surfaces rendent exactement les mêmes blocs — l'éditeur, la page de
+partage, le portail — et le PDF rend les mêmes via `presentSection`. Une agence
+voit donc à l'écran le document qu'elle enverra.
+
+**Ce qui empêche la régression.** `tests/e2e/reports.spec.ts` : une interface en
+français, un rapport en anglais, et l'assertion que l'écran contient
+`en.reports.sections.executive_summary` et **pas** sa traduction française.
+C'est ce test qui a trouvé le défaut.
+
+---
+
+## ADR-074 — Une mesure n'est jamais convertie en `number` pour être affichée
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 12
+
+**Contexte.** ADR-050 garde une mesure en **chaîne** de la base à l'écran parce
+qu'un `double` ne porte que 15 à 17 chiffres significatifs, alors que
+`numeric(20,4)` en porte 24. Le premier formateur de `present.ts` faisait
+pourtant `Number(value)` « juste pour l'affichage » : `9007199254740993.1234`
+sortait arrondi. Dans un rapport, c'est la **preuve** qui s'arrondit.
+
+**Décision.** `formatDecimalString` ne convertit jamais. Les chiffres restent
+des caractères : `Intl` groupe la partie entière (passée en `BigInt`), la partie
+décimale est complétée ou arrondie **au demi supérieur** par report de retenue
+en `BigInt`. La virgule et le séparateur de milliers sont demandés à `Intl`, pas
+codés en dur.
+
+L'arrondi est half-up et non une troncature, parce que c'est ce que fait `Intl`
+partout ailleurs dans le produit, et ce qu'attend un lecteur qui recompte.
+
+**Ce qui empêche la régression.** `tests/unit/reports-present.test.ts` vérifie
+`9007199254740993.1234`, les retenues (`9.99` → `10.0`, `999.999` → `1 000,00`),
+le signe négatif qui disparaît quand la valeur s'arrondit à zéro, et refuse tout
+ce qui n'est pas un décimal.
+
+---
+
+## ADR-075 — Un `timestamptz` traverse vers le navigateur en ISO-8601 UTC
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 12
+
+**Contexte.** Sept modules de requêtes formataient leurs horodatages avec
+`to_char(x, 'YYYY-MM-DD"T"HH24:MI:SSOF')`. Le motif `OF` produit `+00` : un
+décalage **sans minutes**, donc pas de l'ISO-8601. `new Date(...)` répond
+`Invalid Date`, `format.dateTime` lève un `FORMATTING_ERROR`, l'attrape, et
+affiche « Invalid Date » sur la page. Personne ne lisait le log.
+
+Un `Date` ne traverse pas une frontière de composant serveur : la valeur doit
+être une chaîne, et cette chaîne doit survivre à `new Date(...)`.
+
+**Décision.** Une seule fabrique, `isoInstant()` / `isoInstantOrNull()` dans
+`src/db/columns.ts` : la valeur est ramenée en UTC et estampillée `Z`. Le fuseau
+du **lecteur** est appliqué à l'affichage, par `Intl`, là où il doit l'être
+(§8).
+
+**Ce qui empêche la régression.** `tests/architecture/timestamps.test.ts` échoue
+si le motif `SSOF` réapparaît où que ce soit dans `src/`, et
+`tests/integration/reports.test.ts` vérifie qu'un horodatage rendu par une
+requête se parse et désigne le bon instant.
+
+---
+
+## ADR-076 — Le PDF n'embarque pas de police, et ne va pas la chercher
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 12
+
+**Contexte.** La feuille de route demande « polices embarquées ». La manière
+usuelle de le faire avec `@react-pdf/renderer` est
+`Font.register({ src: 'https://…' })` — c'est-à-dire un **appel réseau pendant
+le rendu**, dans un job, contre un hôte que personne ne possède. Un CDN qui
+hoquette empêcherait alors le rapport d'un client d'exister (règle 13).
+
+**Décision.** `Helvetica`, l'une des quatorze polices que **tout** lecteur PDF
+est tenu de fournir. Le fichier ne transporte donc aucun programme de police et
+s'affiche à l'identique sur un téléphone, dans un visualiseur et à l'impression.
+WinAnsi couvre le français : é è à ç ù œ « ».
+
+Le produit n'a pas encore de police de marque (l'interface utilise la pile
+système). Le jour où il en aura une, elle sera enregistrée **au même endroit**,
+depuis un fichier livré dans l'image — des octets dans le dépôt, jamais une URL.
+
+**Le vrai piège était ailleurs.** PDFKit charge ses polices standard par un
+**chemin construit à l'exécution** : le traceur de dépendances de Next ne les
+voit pas et `output: 'standalone'` les laisse dehors. Le symptôme
+(`Cannot find module …/Helvetica.cjs`) n'apparaît que dans l'artefact qui part
+en production. `outputFileTracingIncludes` les nomme explicitement, et
+`tests/e2e/reports.spec.ts` exporte un PDF **depuis le serveur standalone** —
+seul un test contre l'artefact réel attrape ce défaut.
+
+---
+
+## ADR-077 — Le jeton de partage est la seule autorisation sans session
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 12
+
+**Contexte.** `/share/[token]` est la première page du produit atteignable sans
+être connecté. L'organisation ne peut donc pas venir d'une session — et ne doit
+surtout pas venir de l'URL.
+
+**Décision.** Trois étapes délibérément séparées :
+
+1. le **jeton** nomme le partage — `share_by_token()`, `SECURITY DEFINER`, qui
+   ne renvoie que des **métadonnées** (organisation, rapport, expiration,
+   révocation, hash du mot de passe) et **aucun contenu** ; elle est inerte tant
+   que `app.share_token_hash` n'est pas posé, donc inutilisable depuis une
+   session ordinaire ;
+2. le service **pur** tranche — `checkShare`, avec sa **raison** : révoqué avant
+   expiré, parce qu'un lien retiré a été retiré ;
+3. le **snapshot** est lu sous RLS, dans une transaction `withTenant` normale.
+
+Le jeton n'est stocké que **haché** (SHA-256, non étiré : 32 octets de CSPRNG
+n'ont pas de dictionnaire, et le hash est l'index de recherche). Le mot de passe
+optionnel, lui, est **étiré** (scrypt, sel par mot de passe) parce qu'il est
+choisi par un humain. L'expiration est `NOT NULL` : un lien éternel est une
+autorisation permanente offerte à qui transfère le courriel.
+
+La page est en `noindex` et lit le **snapshot** (ADR-014) : elle ne touche
+aucune table vivante.
+
+**Ce qui empêche la régression.** `tests/integration/reports.test.ts` couvre les
+cinq issues (vivant, expiré, révoqué, mot de passe requis / faux, inconnu), le
+fait que la fonction ne répond pas dans une transaction de tenant, et que
+compter une vue avec un autre jeton n'incrémente rien.
+
+---
+
 ## Décisions tranchées avec le commanditaire — 2026-09-14
 
 | # | Sujet | Décision | ADR |
@@ -2201,7 +2343,7 @@ tableau vide, et qu'une action en retard y apparaît avec son retard.
 
 | # | Sujet | Impact | À trancher avant |
 |---|---|---|---|
-| **O4** | Export Excel/CSV reporté en V2 — acceptable ? | Périmètre du LOT 12 | LOT 12 |
+| **O4** | Export Excel/CSV reporté en V2 — acceptable ? | Périmètre du LOT 12 | **LOT 12 — tranché par défaut** : le MVP exporte en **PDF** seulement (`report_exports.format` accepte déjà d'autres valeurs). Choix réversible, à confirmer |
 | **O6** | Gamification : activée par défaut ? désactivable par organisation ? | Paramètres d'organisation | LOT 14 |
 | **O8** | Rétention des données après résiliation d'un abonnement | RGPD, purge | LOT 15 |
 | **O9** | Le client peut-il commenter une **action**, ou seulement un livrable et un rapport ? | Portée du portail | LOT 9 |

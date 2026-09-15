@@ -295,18 +295,34 @@ côté client que le Health Score n'apparaît **nulle part** dans le portail.
 
 ---
 
-## LOT 12 — Reporting & export PDF · *critères MVP 11, 12*
-1. Schéma `reports`, `report_sections`, `report_shares`, `report_exports`.
-2. **11 fournisseurs de données de section**, un par section, testés indépendamment, dégradation gracieuse (R7).
-3. Assistant de création : type → périmètre → période → **langue du rapport** → génération.
-4. Éditeur de rapport : sections pré-remplies, éditables, réordonnables, activables ; **sélection de ce que voit le client**.
-5. Publication → `snapshot` immuable.
-6. Export PDF `@react-pdf/renderer` **en job** : polices embarquées, charte Doomee, FR/EN, notification à la fin.
-7. Partage : lien sécurisé (jeton haché, expiration, révocation, mot de passe optionnel), page `/share/[token]` `noindex`.
-8. Publication vers le portail client (onglet Reports du lot 9).
-9. Job « chaque vendredi » (reporting interne) et « fin de mois » (reporting client) : création d'un brouillon pré-rempli.
+## LOT 12 — Reporting & export PDF · *critères MVP 11, 12* — ✅ **terminé**
+1. ✅ Schéma `reports`, `report_sections`, `report_shares`, `report_exports` — RLS, isolation générée, `snapshot` **immuable par trigger** (ADR-014) et `UPDATE` révoqué sur `report_exports`.
+2. ✅ **11 fournisseurs de données de section**, un par section, séquentiels (ADR-044) ; celui qui échoue coûte **sa** section et rien d'autre (R7).
+3. ✅ Assistant de création : type → périmètre → période → **langue du rapport** → génération. Le rapport s'ouvre **déjà rempli**, jamais sur une liste.
+4. ✅ Éditeur : sections pré-remplies, éditables, réordonnables, activables ; **choix client section par section**, et la section interne dit pourquoi son interrupteur est éteint.
+5. ✅ Publication → `snapshot` immuable, dans **la même transaction** que le changement d'état.
+6. ✅ Export PDF `@react-pdf/renderer` : charte Doomee, FR/EN, notification après commit (`after()`), lien signé ≤ 5 min. Polices **standard-14**, aucun appel réseau au rendu (ADR-076).
+7. ✅ Partage : jeton **haché**, expiration obligatoire, révocation, mot de passe optionnel **étiré** ; page `/share/[token]` en `noindex`, hors du routage de locale (ADR-077).
+8. ✅ Publication vers le portail client — l'onglet Reports que le LOT 9 avait laissé vide.
+9. ✅ Jobs « chaque vendredi » et « fin de mois » (`pnpm reports:drafts weekly|monthly`) : brouillon pré-rempli, **idempotent**, fenêtre calculée dans le fuseau de l'organisation.
 
-✅ **Sortie** : E2E « générer un rapport **en anglais** depuis une interface **en français**, le publier, le partager, le client le consulte ».
+🔒 **Tests obligatoires — faits**
+- ✅ `tests/integration/reports.test.ts` (**23 assertions**) : snapshot figé par la base, export non modifiable, les cinq issues d'un jeton de partage, `share_by_token()` inerte dans une session de tenant, jobs idempotents.
+- ✅ `tests/integration/portal-leak.test.ts` étendu (**139 assertions**) : un brouillon n'est jamais visible, une section non cochée non plus, `attention_points` **jamais**, et `report_shares` / `report_exports` illisibles. Vérifié **par mutation** — quatre tests tombent si l'on relâche une condition.
+- ✅ `tests/architecture/timestamps.test.ts` : aucun horodatage ne peut repartir au format que le navigateur refuse (ADR-075).
+
+✅ **Sortie** : `tests/e2e/reports.spec.ts` — « générer un rapport **en anglais** depuis une
+interface **en français**, le publier, l'exporter en PDF **depuis le serveur standalone**, le
+partager, le client le consulte » ✅ FR + EN, desktop + mobile.
+
+> 🔎 **Quatre vrais défauts trouvés par les tests de ce lot**, tous corrigés :
+> l'éditeur affichait les titres de section dans la langue du **lecteur** (ADR-073) ; une mesure
+> `numeric(20,4)` s'arrondissait à l'affichage (ADR-074) ; **sept modules** rendaient « Invalid
+> Date » parce que `to_char(…OF)` produit `+00` (ADR-075) ; et le PDF ne se rendait **pas** dans
+> le build `standalone`, faute des polices de PDFKit (ADR-076).
+>
+> ⚠️ **O4 tranché par défaut** : le MVP exporte en **PDF** seulement. `report_exports.format`
+> accepte déjà d'autres valeurs — choix **réversible**, à confirmer par le commanditaire.
 
 ---
 

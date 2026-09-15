@@ -29,11 +29,11 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | **LOT 11 terminé et vérifié** — `pnpm verify` vert. **CHECKPOINT 2 (LOT 6 → 10) toujours en attente de validation** |
+| **Phase actuelle** | **LOT 12 terminé et vérifié** — `pnpm verify` vert (764 unitaires · 447 intégration · 186 E2E). **CHECKPOINT 2 (LOT 6 → 10) toujours en attente de validation** |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | **On voit venir les ennuis** : `project_health_snapshots` · `risks`, 8 facteurs purs avec pondérations **en base**, explication localisée depuis `code` + `params` (ADR-069), centre d'alertes. Le Health Score n'a **aucune** vue portail (ADR-070, vérifié par mutation) |
-| **Prochaine étape** | **LOT 12 — reporting & export PDF** |
-| **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md` |
+| **Dernier jalon** | **Un rapport se produit, se publie, s'exporte et se partage.** 11 fournisseurs de section, `snapshot` immuable **par trigger**, PDF `@react-pdf/renderer` sans appel réseau, lien de partage à jeton haché sur `/share/[token]`, onglet Reports du portail rempli, et deux jobs de brouillon (vendredi, fin de mois). `tests/e2e/reports.spec.ts` fait le parcours **en anglais depuis une interface en français** |
+| **Prochaine étape** | **LOT 13 — Dashboards, calendrier, équipe, recherche, réunions** |
+| **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md`. **O4 et O9 tranchées par défaut**, réversibles, à confirmer |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
 > suivante de reprendre sans perdre le contexte.
@@ -210,6 +210,8 @@ pnpm db:migrate       # appliquer les migrations
 pnpm db:seed          # référentiel système + données de démo
 pnpm db:recompute-health  # recalcul planifié de la santé projet (ADR-071)
 pnpm db:refresh-views # rafraîchit les agrégats dérivés (ADR-054)
+pnpm reports:drafts weekly   # brouillon hebdomadaire interne (le vendredi)
+pnpm reports:drafts monthly  # brouillon mensuel par client (fin de mois)
 pnpm test             # tests unitaires + couverture (seuil 90 % bloquant — ADR-055)
 pnpm test:integration # tests d'intégration (Testcontainers)
 pnpm test:e2e         # Playwright
@@ -302,6 +304,13 @@ pnpm verify           # tout, dans l'ordre de la CI
 | ❌ Naviguer juste après le `click()` qui soumet, en E2E | → l'action serveur est **abandonnée**, et la page rapporte honnêtement zéro résultat. Attendre la fermeture de la feuille |
 | ❌ `not.toContainText(x)` sur `main` quand un `<select>` liste `x` | → l'assertion ne peut jamais passer : elle mesure les options du filtre, pas les résultats |
 | ❌ Croire qu'un test E2E voit une modification du code source | → le runner sert le **build** existant ; une mutation ne compte qu'après `pnpm build` |
+| ❌ Traduire le titre d'une section de rapport avec `useTranslations` | → c'est le catalogue du **lecteur**. Une agence française validait alors un document dont le PDF est en anglais. Résoudre sur le serveur, dans la langue du rapport (ADR-073) |
+| ❌ `Number(value)` « juste pour l'affichage » d'un `numeric(20,4)` | → c'est là que la preuve s'arrondit. Formater les **chiffres**, retenue en `BigInt` (ADR-074) |
+| ❌ `to_char(x, 'YYYY-MM-DD"T"HH24:MI:SSOF')` | → `OF` produit `+00`, un décalage sans minutes : `new Date()` répond **Invalid Date** et le formateur l'affiche tel quel. `isoInstant()` (ADR-075) |
+| ❌ Croire qu'un rendu qui marche en test marche dans le build | → PDFKit charge ses polices par un chemin construit à l'exécution : `standalone` les laissait dehors. Tester **contre l'artefact** (ADR-076) |
+| ❌ Typer en `Date` une colonne lue par `db.execute(sql…)` | → une requête brute ne passe pas par les mappeurs de Drizzle : le pilote rend une **chaîne**. Le typecheck passe, la page casse |
+| ❌ Une fonction `SECURITY DEFINER` qui renverrait du contenu | → la porte n'est pas la pièce. `share_by_token()` ne rend que des métadonnées, et rien du tout sans `app.share_token_hash` (ADR-077) |
+| ❌ Un lien de partage sans expiration | → c'est une autorisation permanente offerte à qui transfère le courriel. `expires_at NOT NULL` |
 | ❌ Commencer l'IA, les intégrations ou le suivi du temps | → **V2** (ADR-018) |
 
 ---
@@ -328,9 +337,11 @@ sous-tâches, dépendances, Gantt · paiement en ligne · SSO/SAML · applicatio
 | **Health Score côté client** | **Non** — outil interne ; un indicateur simplifié distinct pourra être exposé plus tard | ADR-025 |
 | **Modèle de rôles** | **6 rôles validés** : `platform_admin` (plateforme) · `owner` · `direction` · `manager` · `collaborator` · `client`. **`owner` est un rôle d'organisation et ne remplace pas le Super Admin** | ADR-012 |
 
-Restent ouvertes, à traiter dans leur lot : **O4** (export Excel/CSV) · **O6** (gamification) ·
-**O8** (rétention après résiliation). **O9** (commentaire client sur une action) est **tranchée par défaut**
-au LOT 9 — livrable et projet seulement, choix restrictif et réversible (ADR-063), à confirmer.
+Restent ouvertes, à traiter dans leur lot : **O6** (gamification) · **O8** (rétention après
+résiliation). Deux décisions ont été **tranchées par défaut**, restrictives et réversibles, et
+attendent confirmation : **O9** — le client commente un livrable et un projet, pas une action
+(ADR-063, LOT 9) — et **O4** — le MVP exporte en **PDF** seulement, `report_exports.format`
+acceptant déjà d'autres valeurs (LOT 12).
 Voir `docs/decisions.md`.
 Aucune ne bloque le LOT 1.
 

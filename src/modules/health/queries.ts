@@ -3,6 +3,7 @@ import 'server-only'
 import { and, asc, desc, eq, isNull, type SQL, sql } from 'drizzle-orm'
 import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
+import { isoInstant, isoInstantOrNull } from '@/db/columns'
 import { clients, projectHealthSnapshots, projects, risks, users } from '@/db/schema'
 import { type Actor, can } from '@/lib/permissions'
 import { defineQuery } from '@/server'
@@ -113,9 +114,7 @@ export const listProjectHealth = defineQuery({
         projectName: projects.name,
         score: projects.healthScore,
         status: projects.healthStatus,
-        computedAt: sql<
-          string | null
-        >`to_char(${projects.healthComputedAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+        computedAt: isoInstantOrNull(projects.healthComputedAt),
         factors: sql<ProjectHealthRow['factors']>`coalesce((
           SELECT s.factors FROM project_health_snapshots s
            WHERE s.project_id = ${projects.id}
@@ -147,7 +146,7 @@ export const listHealthHistory = defineQuery({
         id: projectHealthSnapshots.id,
         score: projectHealthSnapshots.score,
         status: projectHealthSnapshots.status,
-        computedAt: sql<string>`to_char(${projectHealthSnapshots.computedAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+        computedAt: isoInstant(projectHealthSnapshots.computedAt),
       })
       .from(projectHealthSnapshots)
       .where(eq(projectHealthSnapshots.projectId, input.projectId))

@@ -13,6 +13,14 @@ import { routing } from '@/i18n/routing'
  */
 export default createMiddleware(routing)
 
+/**
+ * `share` is excluded on purpose.
+ *
+ * A share link is read in the REPORT's language (ADR-011), which the token
+ * decides and the URL does not know. Letting the locale middleware redirect
+ * `/share/x` to `/fr/share/x` would put a contradiction in the address bar of
+ * every English report an English client opens.
+ */
 export const config = {
-  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
+  matcher: ['/((?!api|share|_next|_vercel|.*\\..*).*)'],
 }

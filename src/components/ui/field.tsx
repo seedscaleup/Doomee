@@ -56,6 +56,24 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
 }
 
 /**
+ * Real prose gets a real box.
+ *
+ * Added for the report editor, where a section body is several paragraphs a
+ * person actually writes — a single-line input turns that into typing through
+ * a letterbox. `rows` defaults to four: tall enough to see a paragraph, short
+ * enough that eleven sections still fit on a phone (rule 9).
+ */
+export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      rows={4}
+      {...props}
+      className={cn(CONTROL, 'resize-y py-2 leading-relaxed', props.className)}
+    />
+  )
+}
+
+/**
  * The yellow button is the single "this is where it happens" element per screen
  * (CLAUDE.md §9). Secondary actions are deliberately quiet, and destructive
  * ones are red — never yellow, because yellow means "go ahead".

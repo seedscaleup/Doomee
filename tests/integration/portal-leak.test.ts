@@ -303,6 +303,46 @@ describe('the client portal leaks nothing', () => {
     )
     into.insights = insightId
 
+    /**
+     * A PUBLISHED report, and a draft of the same shape.
+     *
+     * Two conditions decide what a client sees (ADR-057): the STATUS is
+     * readiness and the FLAG is consent. Seeding both a published report and a
+     * draft, each with a visible section, an unticked section and the internal
+     * `attention_points`, is what makes a missing condition fail here.
+     */
+    const reportId = newId()
+    await query(
+      `INSERT INTO reports (id, organization_id, client_id, type, title,
+                            period_start, period_end, status, published_at, snapshot)
+       VALUES ($1, $2, $3, 'monthly', 'Rapport mensuel',
+               current_date - 30, current_date, 'published', now(), '{"sections":[]}'::jsonb)`,
+      [reportId, organizationId, clientId],
+    )
+    into.reports = reportId
+
+    const draftId = newId()
+    await query(
+      `INSERT INTO reports (id, organization_id, client_id, type, title,
+                            period_start, period_end, status)
+       VALUES ($1, $2, $3, 'monthly', 'Brouillon jamais publié',
+               current_date - 30, current_date, 'draft')`,
+      [draftId, organizationId, clientId],
+    )
+    into.report_drafts = draftId
+
+    const sectionId = newId()
+    await query(
+      `INSERT INTO report_sections
+         (id, organization_id, report_id, key, sort_order, is_included, is_client_visible, body)
+       VALUES ($1, $2, $3, 'results', 0, true, $4, 'Section partagée'),
+              ($5, $2, $3, 'objectives', 1, true, false, 'Section non cochée'),
+              ($6, $2, $3, 'attention_points', 2, true, true, 'Ce qui va mal chez nous'),
+              ($7, $2, $8, 'results', 0, true, true, 'Section d''un brouillon')`,
+      [sectionId, organizationId, reportId, shared, newId(), newId(), newId(), draftId],
+    )
+    into.report_sections = sectionId
+
     const eventId = newId()
     await query(
       `INSERT INTO activity_events
@@ -832,6 +872,114 @@ describe('the client portal leaks nothing', () => {
     const ids = (both.rows as { id: string }[]).map((row) => row.id).sort()
     expect(ids).toEqual([clientVisible, clientOther].sort())
     expect(ids).not.toContain(clientForeign)
+  })
+
+  /**
+   * ==========================================================================
+   * REPORTS — the tab LOT 9 left empty, and the four ways it could leak.
+   * ==========================================================================
+   */
+  describe('reports', () => {
+    it('shows the client their own published report, and only theirs', async () => {
+      const ids = await idsIn('reports')
+
+      expect(ids).toContain(seen.reports)
+      expect(ids).not.toContain(otherClient.reports)
+      expect(ids).not.toContain(foreign.reports)
+    })
+
+    /** Status is readiness (ADR-057): a draft is not a report anyone received. */
+    it('never shows a draft, however its sections are ticked', async () => {
+      const ids = await idsIn('reports')
+      expect(ids).not.toContain(seen.report_drafts)
+    })
+
+    it('shows only the sections both included AND marked visible', async () => {
+      const rows = await asPortal((tx) =>
+        tx.execute(sql.raw('SELECT key, body FROM portal.report_sections')),
+      )
+      const keys = (rows.rows as { key: string }[]).map((row) => row.key)
+
+      expect(keys).toContain('results')
+      // Included, but nobody ticked it.
+      expect(keys).not.toContain('objectives')
+    })
+
+    /**
+     * `attention_points` is the team's own list of what is going wrong. It is
+     * excluded by the POLICY, not by a default — so ticking it by mistake, as
+     * the fixture does, still does not share it (the same rule as `what_didnt`,
+     * ADR-065).
+     */
+    it('never shows the attention points, even when they are ticked', async () => {
+      const rows = await asPortal((tx) =>
+        tx.execute(
+          sql.raw("SELECT key FROM portal.report_sections WHERE key = 'attention_points'"),
+        ),
+      )
+      expect(rows.rows).toEqual([])
+    })
+
+    it('never shows a section of another client’s or another org’s report', async () => {
+      const rows = await asPortal((tx) =>
+        tx.execute(sql.raw('SELECT report_id FROM portal.report_sections')),
+      )
+      const reportIds = (rows.rows as { report_id: string }[]).map((row) => row.report_id)
+
+      expect(new Set(reportIds)).toEqual(new Set([seen.reports]))
+    })
+
+    /** The frozen snapshot is the agency's copy of record, not a portal column. */
+    it('refuses the snapshot, the status and the editor settings', async () => {
+      for (const column of ['snapshot', 'status', 'settings', 'created_by', 'deleted_at']) {
+        const error = await asPortal((tx) =>
+          tx.execute(sql.raw(`SELECT ${column} FROM reports LIMIT 1`)),
+        ).catch((caught: unknown) => caught)
+
+        expect(causeOf(error)).toMatch(/permission denied/i)
+      }
+    })
+
+    /** A share link is the agency's to hand out. Its hash is nobody else's. */
+    it('cannot read report_shares or report_exports at all', async () => {
+      for (const table of ['report_shares', 'report_exports']) {
+        const error = await asPortal((tx) =>
+          tx.execute(sql.raw(`SELECT * FROM ${table} LIMIT 1`)),
+        ).catch((caught: unknown) => caught)
+
+        expect(causeOf(error)).toMatch(/permission denied/i)
+      }
+    })
+
+    it('cannot write a report, a section, or a share', async () => {
+      const writes = [
+        `UPDATE reports SET title = 'Renommé'`,
+        `UPDATE report_sections SET body = 'Réécrit'`,
+        `DELETE FROM reports`,
+        `INSERT INTO report_shares (id, organization_id, report_id, token_hash, expires_at)
+           VALUES ('${newId()}', '${orgA.id}', '${seen.reports}', 'x', now() + interval '1 day')`,
+      ]
+
+      for (const statement of writes) {
+        const error = await asPortal((tx) => tx.execute(sql.raw(statement))).catch(
+          (caught: unknown) => caught,
+        )
+        expect(causeOf(error)).toMatch(/permission denied/i)
+      }
+    })
+
+    /**
+     * `share_by_token()` is the doorway of the unauthenticated share page. It
+     * must be inert inside a portal session: a client holding a session must
+     * not be able to enumerate share links by calling it.
+     */
+    it('cannot call the share-token lookup from a portal session', async () => {
+      const error = await asPortal((tx) =>
+        tx.execute(sql.raw('SELECT * FROM share_by_token()')),
+      ).catch((caught: unknown) => caught)
+
+      expect(causeOf(error)).toMatch(/permission denied/i)
+    })
   })
 
   /**

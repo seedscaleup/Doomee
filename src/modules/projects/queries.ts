@@ -2,6 +2,7 @@ import 'server-only'
 
 import { and, asc, eq, ilike, isNull, or, type SQL, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { isoInstantOrNull } from '@/db/columns'
 import { clients, memberships, milestones, projectMembers, projects, users } from '@/db/schema'
 import { type Actor, can } from '@/lib/permissions'
 import { defineQuery } from '@/server'
@@ -175,9 +176,7 @@ export const listMilestones = defineQuery({
         description: milestones.description,
         dueDate: milestones.dueDate,
         isClientVisible: milestones.isClientVisible,
-        reachedAt: sql<
-          string | null
-        >`to_char(${milestones.reachedAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+        reachedAt: isoInstantOrNull(milestones.reachedAt),
       })
       .from(milestones)
       .where(and(eq(milestones.projectId, input.projectId), isNull(milestones.deletedAt)))

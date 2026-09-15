@@ -2,6 +2,7 @@ import 'server-only'
 
 import { and, asc, desc, eq, ilike, isNull, or, type SQL, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { isoInstant, isoInstantOrNull } from '@/db/columns'
 import {
   actions,
   clients,
@@ -117,15 +118,9 @@ export const getDeliverable = defineQuery({
         ownerUserId: deliverables.ownerUserId,
         externalUrl: deliverables.externalUrl,
         timezone: projects.timezone,
-        sentToClientAt: sql<
-          string | null
-        >`to_char(${deliverables.sentToClientAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
-        approvedAt: sql<
-          string | null
-        >`to_char(${deliverables.approvedAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
-        publishedAt: sql<
-          string | null
-        >`to_char(${deliverables.publishedAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+        sentToClientAt: isoInstantOrNull(deliverables.sentToClientAt),
+        approvedAt: isoInstantOrNull(deliverables.approvedAt),
+        publishedAt: isoInstantOrNull(deliverables.publishedAt),
       })
       .from(deliverables)
       .innerJoin(projects, eq(projects.id, deliverables.projectId))
@@ -163,7 +158,7 @@ export const listVersions = defineQuery({
         sizeBytes: files.sizeBytes,
         storageKey: files.storageKey,
         createdByName: users.name,
-        createdAt: sql<string>`to_char(${deliverableVersions.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+        createdAt: isoInstant(deliverableVersions.createdAt),
       })
       .from(deliverableVersions)
       .leftJoin(files, eq(files.id, deliverableVersions.fileId))
@@ -202,7 +197,7 @@ export const listReviews = defineQuery({
         comment: deliverableReviews.comment,
         version: deliverableVersions.version,
         reviewerName: users.name,
-        createdAt: sql<string>`to_char(${deliverableReviews.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+        createdAt: isoInstant(deliverableReviews.createdAt),
       })
       .from(deliverableReviews)
       .innerJoin(deliverableVersions, eq(deliverableVersions.id, deliverableReviews.versionId))

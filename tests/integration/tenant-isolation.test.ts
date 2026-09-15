@@ -184,6 +184,55 @@ const FIXTURES: Record<string, Fixture> = {
       return id
     },
   },
+  reports: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const projectId = await FIXTURES.projects?.seed(query, organizationId)
+      await query(
+        `INSERT INTO reports
+           (id, organization_id, type, title, project_id, period_start, period_end)
+         VALUES ($1, $2, 'monthly', 'Rapport', $3, current_date - 30, current_date)`,
+        [id, organizationId, projectId],
+      )
+      return id
+    },
+  },
+  report_sections: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const reportId = await FIXTURES.reports?.seed(query, organizationId)
+      await query(
+        `INSERT INTO report_sections (id, organization_id, report_id, key)
+         VALUES ($1, $2, $3, 'results')`,
+        [id, organizationId, reportId],
+      )
+      return id
+    },
+  },
+  report_shares: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const reportId = await FIXTURES.reports?.seed(query, organizationId)
+      await query(
+        `INSERT INTO report_shares (id, organization_id, report_id, token_hash, expires_at)
+         VALUES ($1, $2, $3, $4, now() + interval '7 days')`,
+        [id, organizationId, reportId, `hash-${id}`],
+      )
+      return id
+    },
+  },
+  report_exports: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const reportId = await FIXTURES.reports?.seed(query, organizationId)
+      await query(
+        `INSERT INTO report_exports (id, organization_id, report_id, format, locale)
+         VALUES ($1, $2, $3, 'pdf', 'fr')`,
+        [id, organizationId, reportId],
+      )
+      return id
+    },
+  },
   risks: {
     seed: async (query, organizationId) => {
       const id = newId()
@@ -401,6 +450,9 @@ const NO_UPDATE = new Set([
   // the history into a story, and the whole value of the history is being able
   // to say "this project has been sliding for three weeks".
   'project_health_snapshots',
+  // An export is a file that was generated at a moment. Regenerating means a
+  // new row, so the trail of what was sent to whom stays readable.
+  'report_exports',
   // A review is a decision that was MADE. "The client approved version 3 on the
   // 14th" has to stay true, or the validation trail is worth nothing. A version
   // is the same kind of fact: correcting it means uploading the next one.

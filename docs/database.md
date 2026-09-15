@@ -707,14 +707,43 @@ l'organisation et ramenées à une somme de 1 par `normaliseWeights` (ADR-068).
 > Chaque section a un **fournisseur de données** indépendant (`modules/reports/providers/*`).
 > Si un fournisseur échoue, la section est livrée vide et éditable : le rapport n'est jamais bloqué (R7).
 
+> `snapshot` est **immuable après publication**, et pas seulement par
+> convention : le trigger `reports_snapshot_is_immutable()` refuse toute
+> modification — y compris une remise à `NULL` — dès que `status = 'published'`
+> (ADR-014). `UPDATE` reste accordé sur `reports` : un brouillon s'édite sans
+> cesse, et archiver un rapport publié est un changement d'état.
+
 ### `report_shares`
 `id` · `organization_id` · `report_id` · `token_hash text UNIQUE` · `password_hash text NULL` ·
 `expires_at timestamptz NOT NULL` · `revoked_at` · `view_count int` · `last_viewed_at` ·
 `recipient_email` · `created_by`
 
+> Le **jeton** n'est jamais stocké : seulement son SHA-256, qui sert aussi
+> d'index de recherche. Il est montré **une fois**, à la création — aucune
+> requête du produit ne renvoie `token_hash`. Le mot de passe optionnel est
+> `scrypt` avec un sel par mot de passe, parce qu'un mot de passe humain a un
+> dictionnaire et 32 octets de CSPRNG n'en ont pas (ADR-077).
+>
+> `expires_at` est `NOT NULL` : un lien éternel est une autorisation permanente
+> offerte à qui transfère le courriel.
+
 ### `report_exports`
 `id` · `organization_id` · `report_id` · `format export_format` · `file_id` · `locale` ·
-`generated_at` · `generated_by` *(MVP : `pdf` uniquement ; `xlsx`/`csv` prêts pour la V2)*
+`generated_at` · `generated_by` *(MVP : `pdf` uniquement ; `xlsx`/`csv` prêts pour la V2 — O4)*
+
+> `UPDATE` est **révoqué** : un export est ce qui a été envoyé à un moment.
+> Régénérer crée une ligne, pour que la trace reste lisible.
+
+### Les deux fonctions du partage *(sans tenant)*
+
+| Fonction | Répond à |
+|---|---|
+| `share_by_token()` | « quel partage ce jeton nomme-t-il ? » — renvoie les **métadonnées** seules, aucun contenu, et **rien** tant que `app.share_token_hash` n'est pas posé |
+| `share_record_view(id)` | incrémente le compteur de vues, et **seulement** pour le jeton courant |
+
+`withShareLookup(hash, fn)` est le seul chemin qui les appelle : il exige un
+SHA-256 bien formé, pose `app.share_token_hash` en `SET LOCAL`, et ne pose
+**aucune** organisation — celle-ci vient du jeton, jamais de l'URL (ADR-077).
 
 ---
 
@@ -921,6 +950,13 @@ compteurs internes.
 | `portal_sees_result(org, id)` · `portal_sees_file(org, id)` | par leur route (ADR-062) |
 | `portal_awaits_decision(org, id)` | « attend-il *sa* décision ? » |
 | `portal_file_key(org, id)` | la clé de stockage, **pour le serveur** qui signe le lien — jamais pour le navigateur |
+| `portal_sees_report(org, id)` | « ce rapport est-il **publié** et destiné à ce client ? » — posée par la politique de `report_sections`, en fonction plutôt qu'en `EXISTS`, pour ne pas devoir accorder `status` (ADR-061) |
+
+**Les rapports** *(LOT 12)* : `portal.reports` n'expose ni `status`, ni
+`snapshot`, ni `settings` ; `portal.report_sections` ne montre qu'une section
+**incluse ET cochée**, et **jamais** `attention_points` — exclue par la
+politique elle-même, donc cocher par erreur ne la partage pas (ADR-065).
+`report_shares` et `report_exports` n'ont ni vue, ni grant, ni politique.
 
 **Les quatre portes d'écriture** : `comments` (INSERT), `deliverable_reviews`
 (INSERT), `deliverables` (`UPDATE` sur 4 colonnes), `audit_logs` (INSERT, et

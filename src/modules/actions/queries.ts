@@ -2,6 +2,7 @@ import 'server-only'
 
 import { and, asc, desc, eq, ilike, inArray, isNull, or, type SQL, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { isoInstant, isoInstantOrNull } from '@/db/columns'
 import {
   actionCategories,
   actionCollaborators,
@@ -140,9 +141,7 @@ export const getAction = defineQuery({
         estimatedMinutes: actions.estimatedMinutes,
         spentMinutes: actions.spentMinutes,
         blockedReason: actions.blockedReason,
-        completedAt: sql<
-          string | null
-        >`to_char(${actions.completedAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+        completedAt: isoInstantOrNull(actions.completedAt),
       })
       .from(actions)
       .innerJoin(projects, eq(projects.id, actions.projectId))
@@ -181,7 +180,7 @@ export const listComments = defineQuery({
         body: comments.body,
         visibility: comments.visibility,
         authorName: users.name,
-        createdAt: sql<string>`to_char(${comments.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+        createdAt: isoInstant(comments.createdAt),
       })
       .from(comments)
       .leftJoin(users, eq(users.id, comments.authorUserId))

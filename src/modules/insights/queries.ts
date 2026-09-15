@@ -2,6 +2,7 @@ import 'server-only'
 
 import { and, asc, desc, eq, ilike, isNull, or, type SQL, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { isoInstant } from '@/db/columns'
 import {
   actions,
   clients,
@@ -60,7 +61,7 @@ const INSIGHT_COLUMNS = {
   periodEnd: insights.periodEnd,
   isClientVisible: insights.isClientVisible,
   authorName: users.name,
-  createdAt: sql<string>`to_char(${insights.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+  createdAt: isoInstant(insights.createdAt),
   resultCount: sql<number>`(
     SELECT count(*)::int FROM insight_results ir WHERE ir.insight_id = ${insights.id}
   )`,

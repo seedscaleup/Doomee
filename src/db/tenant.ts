@@ -191,6 +191,53 @@ export async function withUserLookup<T>(
   }
 }
 
+/**
+ * ============================================================================
+ * The SECOND query that legitimately runs without a tenant: resolving a share
+ * token to the organisation it belongs to.
+ *
+ * A share link carries no session — the token IS the authorisation. So the
+ * organisation cannot come from a session, and it must not come from the URL
+ * either. It comes from the token itself, looked up by a SECURITY DEFINER
+ * function that returns the share's METADATA and nothing else: no report
+ * title, no content, no sections.
+ *
+ * Once the organisation is known, the caller opens a normal `withTenant`
+ * transaction and reads the report under row level security like everything
+ * else. This function is the doorway, never the room.
+ *
+ * Migration 0018 gates the matching function on `app.share_token_hash` being
+ * set, so it is inert inside any ordinary tenant transaction and cannot be
+ * used to widen one.
+ * ============================================================================
+ */
+export async function withShareLookup<T>(
+  tokenHash: string,
+  fn: (db: TenantDb) => Promise<T>,
+): Promise<T> {
+  if (!/^[a-f0-9]{64}$/.test(tokenHash)) {
+    throw new Error('withShareLookup requires a sha-256 hash')
+  }
+
+  const client = await poolFor('internal').connect()
+
+  try {
+    await client.query('BEGIN')
+    await client.query('SET LOCAL ROLE app_user')
+    await client.query('SELECT set_config($1, $2, true)', ['app.share_token_hash', tokenHash])
+
+    const result = await fn(drizzle(client, { schema }))
+    await client.query('COMMIT')
+    return result
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined)
+    throw error
+  } finally {
+    await client.query('RESET ROLE').catch(() => undefined)
+    client.release()
+  }
+}
+
 /** Client portal sessions. Reads the portal.* views only (ADR-026). */
 export function withPortal<T>(
   context: TenantContext & { clientIds: readonly string[]; userId: string },

@@ -74,6 +74,14 @@ function contentTypeFor(key: string): string {
   if (extension === 'png') return 'image/png'
   if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg'
   if (extension === 'webp') return 'image/webp'
+  /**
+   * A report PDF, which this product GENERATED — the only non-image type here,
+   * and it is named rather than left as octet-stream so the download arrives as
+   * a document instead of an anonymous blob. It is still served as an
+   * `attachment`: a PDF is not on the inline list, because rendering a document
+   * in our own origin is a surface we do not need (ADR-037).
+   */
+  if (extension === 'pdf') return 'application/pdf'
 
   return 'application/octet-stream'
 }

@@ -2,6 +2,7 @@ import 'server-only'
 
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { isoInstant, isoInstantOrNull } from '@/db/columns'
 import {
   portalActivityEvents,
   portalClients,
@@ -14,6 +15,8 @@ import {
   portalMetrics,
   portalObjectives,
   portalProjects,
+  portalReportSections,
+  portalReports,
   portalResultMetrics,
   portalResults,
   portalUsers,
@@ -29,6 +32,8 @@ import type {
   PortalMetricRow,
   PortalObjectiveRow,
   PortalProjectRow,
+  PortalReportDetail,
+  PortalReportRow,
   PortalResultRow,
   PortalReviewRow,
 } from './types'
@@ -120,9 +125,7 @@ const DELIVERABLE_COLUMNS = {
   status: portalDeliverables.status,
   typeLabels: portalDeliverableTypes.labels,
   dueDate: portalDeliverables.dueDate,
-  sentToClientAt: sql<
-    string | null
-  >`to_char(${portalDeliverables.sentToClientAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+  sentToClientAt: isoInstantOrNull(portalDeliverables.sentToClientAt),
   version: portalDeliverableVersions.version,
   versionId: portalDeliverableVersions.id,
   externalUrl: portalDeliverableVersions.externalUrl,
@@ -193,7 +196,7 @@ export const listPortalReviews = definePortalQuery({
         // NULL for an internal review: the view blanks it (ADR-026).
         comment: portalDeliverableReviews.comment,
         version: portalDeliverableVersions.version,
-        createdAt: sql<string>`to_char(${portalDeliverableReviews.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+        createdAt: isoInstant(portalDeliverableReviews.createdAt),
       })
       .from(portalDeliverableReviews)
       .innerJoin(
@@ -294,7 +297,7 @@ export const listPortalComments = definePortalQuery({
         id: portalComments.id,
         body: portalComments.body,
         authorName: portalUsers.name,
-        createdAt: sql<string>`to_char(${portalComments.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+        createdAt: isoInstant(portalComments.createdAt),
         projectId: portalComments.projectId,
       })
       .from(portalComments)
@@ -326,7 +329,7 @@ export const listPortalActivity = definePortalQuery({
         verb: portalActivityEvents.verb,
         actorName: portalUsers.name,
         params: portalActivityEvents.params,
-        createdAt: sql<string>`to_char(${portalActivityEvents.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SSOF')`,
+        createdAt: isoInstant(portalActivityEvents.createdAt),
       })
       .from(portalActivityEvents)
       .leftJoin(portalUsers, eq(portalUsers.id, portalActivityEvents.actorUserId))
@@ -369,3 +372,80 @@ async function withSignedLinks(
     fileUrl: fileId ? (links.get(fileId) ?? null) : null,
   }))
 }
+
+/**
+ * ============================================================================
+ * THE REPORTS TAB — the one the LOT 9 shell left empty.
+ *
+ * No status filter, no visibility filter, no client filter here: the policy on
+ * `reports` already answers "published, and belonging to a project or client
+ * this contact may see", and the policy on `report_sections` already answers
+ * "included, client-visible, and not `attention_points`". Repeating either
+ * condition in TypeScript would be a second place to get it right (ADR-026).
+ * ============================================================================
+ */
+export const listPortalReports = definePortalQuery({
+  input: z.object({ projectId: z.uuid().optional() }).default({}),
+  permission: 'report.read',
+  handler: async (input, { db }): Promise<PortalReportRow[]> => {
+    return db
+      .select({
+        id: portalReports.id,
+        type: portalReports.type,
+        title: portalReports.title,
+        projectId: portalReports.projectId,
+        projectName: portalProjects.name,
+        periodStart: portalReports.periodStart,
+        periodEnd: portalReports.periodEnd,
+        locale: portalReports.locale,
+        publishedAt: sql<string | null>`to_char(${portalReports.publishedAt}, 'YYYY-MM-DD')`,
+      })
+      .from(portalReports)
+      .leftJoin(portalProjects, eq(portalProjects.id, portalReports.projectId))
+      .where(input.projectId ? eq(portalReports.projectId, input.projectId) : undefined)
+      .orderBy(desc(portalReports.periodEnd))
+      .limit(100)
+  },
+})
+
+export const getPortalReport = definePortalQuery({
+  input: z.object({ id: z.uuid() }),
+  permission: 'report.read',
+  handler: async (input, { db }): Promise<PortalReportDetail | null> => {
+    const rows = await db
+      .select({
+        id: portalReports.id,
+        type: portalReports.type,
+        title: portalReports.title,
+        projectId: portalReports.projectId,
+        projectName: portalProjects.name,
+        periodStart: portalReports.periodStart,
+        periodEnd: portalReports.periodEnd,
+        locale: portalReports.locale,
+        publishedAt: sql<string | null>`to_char(${portalReports.publishedAt}, 'YYYY-MM-DD')`,
+      })
+      .from(portalReports)
+      .leftJoin(portalProjects, eq(portalProjects.id, portalReports.projectId))
+      .where(eq(portalReports.id, input.id))
+      .limit(1)
+
+    const report = rows[0]
+    // 404, never 403: a client must not learn that a report exists (rule 6).
+    if (!report) return null
+
+    const sections = await db
+      .select({
+        id: portalReportSections.id,
+        key: portalReportSections.key,
+        sortOrder: portalReportSections.sortOrder,
+        titleOverride: portalReportSections.titleOverride,
+        body: portalReportSections.body,
+        data: portalReportSections.data,
+      })
+      .from(portalReportSections)
+      .where(eq(portalReportSections.reportId, input.id))
+      .orderBy(portalReportSections.sortOrder)
+
+    return { ...report, sections }
+  },
+})

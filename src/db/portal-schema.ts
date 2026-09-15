@@ -258,3 +258,35 @@ export const portalClientUserAccess = portal.table('client_user_access', {
   clientId: uuid('client_id').notNull(),
   userId: uuid('user_id').notNull(),
 })
+
+/**
+ * A report reaches a client only once it is PUBLISHED, and `status` is absent
+ * from the view because the view never has to say so: the policy has already
+ * refused every other row. `snapshot` and `settings` are absent too — the
+ * portal reads the SECTIONS, which is the same data in the shape a reader
+ * needs (ADR-014, ADR-026).
+ */
+export const portalReports = portal.table('reports', {
+  id: uuid('id').primaryKey(),
+  organizationId: uuid('organization_id').notNull(),
+  type: text('type').notNull(),
+  title: text('title').notNull(),
+  projectId: uuid('project_id'),
+  clientId: uuid('client_id'),
+  periodStart: date('period_start').notNull(),
+  periodEnd: date('period_end').notNull(),
+  locale: text('locale').notNull(),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+})
+
+/** `is_included`, `is_client_visible` and `attention_points` are filtered by the policy. */
+export const portalReportSections = portal.table('report_sections', {
+  id: uuid('id').primaryKey(),
+  organizationId: uuid('organization_id').notNull(),
+  reportId: uuid('report_id').notNull(),
+  key: text('key').notNull(),
+  sortOrder: integer('sort_order').notNull(),
+  titleOverride: text('title_override'),
+  body: text('body'),
+  data: jsonb('data').$type<Record<string, unknown> | null>(),
+})

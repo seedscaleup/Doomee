@@ -212,3 +212,51 @@ export const riskLevel = pgEnum('risk_level', ['low', 'medium', 'critical'])
  * and collapsing the two would hide exactly the ones being actively managed.
  */
 export const riskStatus = pgEnum('risk_status', ['open', 'mitigated', 'closed'])
+
+/**
+ * ============================================================================
+ * REPORTING (LOT 12)
+ * ============================================================================
+ */
+
+/** What a report is FOR. The wizard's first question. */
+export const reportType = pgEnum('report_type', [
+  'weekly_internal',
+  'monthly',
+  'project',
+  'client',
+  'campaign_review',
+  'period_review',
+])
+
+/**
+ * A state machine, so an enum (ADR-010).
+ *
+ * `published` is the one that matters: it is the moment the data is FROZEN
+ * into a snapshot (ADR-014). Everything after it reads the snapshot.
+ */
+export const reportStatus = pgEnum('report_status', ['draft', 'in_review', 'published', 'archived'])
+
+/**
+ * The eleven sections, each with its own independent data provider.
+ *
+ * An enum rather than a reference table: these are the STRUCTURE of a report,
+ * and each one is backed by code that knows how to fill it. Adding a twelfth
+ * means writing a provider, not adding a row (ADR-010).
+ */
+export const reportSectionKey = pgEnum('report_section_key', [
+  'executive_summary',
+  'objectives',
+  'actions',
+  'deliverables',
+  'results',
+  'objectives_comparison',
+  'analysis',
+  'insights',
+  'attention_points',
+  'recommendations',
+  'next_steps',
+])
+
+/** `xlsx` and `csv` are declared but unreachable at the MVP (O4, §14). */
+export const exportFormat = pgEnum('export_format', ['pdf', 'xlsx', 'csv'])
