@@ -73,6 +73,34 @@ test.describe('managing projects', () => {
     await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50')
   })
 
+  test('never scrolls sideways, whatever the viewport', async ({ page }) => {
+    await enterWorkspace(page, 'fr', 'width')
+    await page.goto('/fr/app/projects')
+    await page.getByRole('button', { name: fr.projects.new }).first().click()
+    await page.getByLabel(fr.projects.form.name).fill('Projet large')
+    await page.getByRole('button', { name: fr.common.save }).click()
+    await page.getByRole('button', { name: 'Projet large' }).click()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Projet large')
+
+    /**
+     * The detail screen has five tabs, and five tabs do not fit in 393 CSS
+     * pixels. A row that does not scroll on its own widens the PAGE instead —
+     * which moves every tap target on the screen, not just the tabs. Measured
+     * at 83px the day the fifth tab arrived.
+     */
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )
+    expect(overflow, 'the project screen must not scroll sideways').toBeLessThanOrEqual(0)
+
+    // The tab row itself is allowed to scroll: that is where the width goes.
+    const tablist = page.getByRole('tablist')
+    await expect(tablist).toBeVisible()
+    for (const name of ['overview', 'objectives', 'members', 'milestones', 'activity'] as const) {
+      await expect(tablist.getByRole('tab', { name: fr.projects.tabs[name] })).toBeVisible()
+    }
+  })
+
   test('works in English too', async ({ page }) => {
     await enterWorkspace(page, 'en', 'projects-en')
     await page.goto('/en/app/projects')

@@ -142,6 +142,17 @@ const FIXTURES: Record<string, Fixture> = {
       return id
     },
   },
+  objectives: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const projectId = await FIXTURES.projects?.seed(query, organizationId)
+      await query(
+        'INSERT INTO objectives (id, organization_id, project_id, title) VALUES ($1, $2, $3, $4)',
+        [id, organizationId, projectId, 'Objectif'],
+      )
+      return id
+    },
+  },
   actions: {
     seed: async (query, organizationId) => {
       const id = newId()

@@ -51,6 +51,10 @@
 | [ADR-043](#adr-043) | `action.update_own` a besoin d'une règle de ligne | **Acceptée** |
 | [ADR-044](#adr-044) | Une transaction, une requête à la fois | **Acceptée** |
 | [ADR-045](#adr-045) | `event.currentTarget` ne survit pas à un `await` | **Acceptée** |
+| [ADR-046](#adr-046) | Un écart non calculable dit pourquoi | **Acceptée** |
+| [ADR-047](#adr-047) | Une métrique porte son agrégation et sa direction | **Acceptée** |
+| [ADR-048](#adr-048) | Un objectif est visible du client par défaut | **Acceptée** |
+| [ADR-049](#adr-049) | Ce qui dépasse scrolle dans son conteneur, pas la page | **Acceptée** |
 
 ---
 
@@ -1183,6 +1187,139 @@ l'erreur était dans le navigateur.
 `const element = event.currentTarget`. Et, plus généralement : un `catch` qui
 enveloppe autre chose que l'appel réseau attribue à cet appel des erreurs qui ne
 sont pas les siennes.
+
+---
+
+<a id="adr-046"></a>
+## ADR-046 — Un écart qu'on ne peut pas calculer dit pourquoi
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 6
+
+**Contexte.** `computeGap` peut échouer pour quatre raisons très différentes :
+pas de cible chiffrée, aucun résultat encore saisi, une cible à zéro, ou —
+la plus grave — **deux devises différentes** (ADR-024). Rendre `number | null`
+les aurait toutes affichées comme un tiret, c'est-à-dire comme la même chose.
+
+**Décision.** `Gap` est une union discriminée :
+
+```ts
+| { computed: true; difference; achievementPercent; verdict }
+| { computed: false; reason: 'no_target' | 'no_result' | 'currency_mismatch' | 'zero_target' }
+```
+
+L'écran distingue les quatre, et la **non-concordance de devises est montrée
+comme une erreur**, pas comme une absence : c'est le seul cas où le produit
+*aurait pu* produire un nombre plausible et a délibérément refusé. Un chiffre
+faux dans un rapport client coûte plus cher qu'une case vide.
+
+La vérification de devise passe **avant toutes les autres** : signaler « aucun
+résultat » d'abord masquerait une comparaison qui ne sera jamais possible.
+
+**Le verdict dépend de la direction de la métrique.** 130 % d'une cible de
+chiffre d'affaires, c'est en avance ; 130 % d'une cible de coût par lead, c'est
+en retard. C'est toute la raison pour laquelle `direction` est une colonne de
+`metrics` et pas une hypothèse dans un graphique — et un test le vérifie contre
+les lignes **réellement seedées**, pas contre des valeurs inventées.
+
+**Tolérance.** À ±5 % de la cible, le verdict est « dans les clous » : un signe
+devant un écart de 2 % suggère une précision que la mesure n'a pas.
+
+---
+
+<a id="adr-047"></a>
+## ADR-047 — Une métrique porte son agrégation et sa direction
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 6
+
+**Contexte.** Le catalogue de 24 métriques aurait pu n'être qu'une liste de
+libellés. Il ne peut pas : sans savoir **comment** plusieurs mesures deviennent
+un nombre sur une période, ni **si « plus » est mieux**, un objectif n'est pas
+calculable.
+
+**Décision.** Chaque `metric` porte :
+
+| Colonne | Ce qu'elle évite |
+|---|---|
+| `aggregation` | Sommer un taux. Deux semaines à 3 % ne font pas une quinzaine à 6 % — CTR et taux de conversion sont en `avg`, un score de performance en `last` |
+| `direction` | Noter à l'envers. `spend`, `cpl`, `cpc` et `bugs` sont `lower_is_better` |
+| `kind` · `decimals` | Afficher un ratio comme un entier, ou un montant sans ses décimales |
+| `is_computed` · `formula` | Stocker deux fois la même vérité |
+
+**Les métriques calculées ne sont pas stockées.** CTR, CPC, CPL, ROAS, ROI et le
+taux de conversion sont dérivés **à la lecture** (LOT 7) depuis leur formule. Un
+ratio stocké est un ratio qui contredit son propre numérateur la première fois
+que l'un des deux est corrigé.
+
+**Le seed corrige en place.** Tout sauf le `code` est réécrit à chaque exécution :
+une métrique dont la direction était fausse notait les objectifs à l'envers, et
+le correctif doit atteindre les installations qui ont déjà la ligne.
+
+---
+
+<a id="adr-048"></a>
+## ADR-048 — Un objectif est visible du client par défaut
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 6
+
+**Contexte.** La règle 2 impose `is_client_visible = false` par défaut partout.
+`objectives` est la seule exception du modèle, et elle mérite d'être écrite
+plutôt que découverte.
+
+**Décision.** `objectives.is_client_visible` vaut `true` par défaut.
+
+**Pourquoi ce n'est pas une entorse.** L'objectif est **ce que le client paie**.
+Un portail qui montre l'activité sans montrer ce qu'elle poursuit est une liste
+de tâches — exactement ce que Doomee refuse d'être. Ce qui reste interne, c'est
+l'**analyse** autour de l'objectif : les commentaires (`internal` par défaut), le
+Health Score (ADR-025), les notes d'équipe.
+
+**Ce qui empêche la dérive.** La visibilité par défaut ne dispense de rien :
+l'exposition réelle passera par les vues `portal.*` à colonnes explicites
+(ADR-026) au LOT 9. Un défaut à `true` sur une colonne ne met rien dans une vue
+qui ne la sélectionne pas — c'est précisément pour ça que la barrière est une
+vue et pas un drapeau.
+
+---
+
+<a id="adr-049"></a>
+## ADR-049 — Ce qui dépasse scrolle dans son propre conteneur, jamais la page
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 6
+
+**Contexte.** Le LOT 6 ajoute un cinquième onglet à la fiche projet. Cinq
+onglets ne tiennent pas dans 393 pixels CSS, et la rangée ne scrollait pas : elle
+élargissait **la page**. Résultat mesuré : **83 px de défilement horizontal** sur
+un téléphone.
+
+Ce n'était pas un défaut cosmétique. Une page décalée horizontalement déplace
+**toutes** les cibles de l'écran : sur huit tests E2E mobiles, le clic sur
+« Enregistrer » d'une feuille atterrissait sur le `<select>` d'à côté. Le
+symptôme — « un champ intercepte les événements de pointeur » — ne ressemblait en
+rien à sa cause, et a coûté plusieurs pistes fausses : d'abord un pied de
+formulaire collant, puis une restructuration du modèle de défilement de la
+modale, toutes deux inutiles et l'une d'elles nuisible.
+
+**Ce qui a fini par trancher** : revenir à `HEAD` et constater que les mêmes
+tests passaient en 23 s. Le code du lot en cours était donc en cause, pas la
+modale ; il restait à mesurer, et `scrollWidth - clientWidth` a donné la réponse
+en une ligne.
+
+**Décision.** Un motif qui peut dépasser en largeur scrolle **dans son propre
+conteneur** : `overflow-x-auto` sur la rangée, `shrink-0` sur les éléments. La
+page, elle, ne défile jamais latéralement.
+
+La rangée d'onglets devient un composant, `Tabs` — sa **troisième** occurrence
+(clients, projets, actions), pas sa première (règle 8). Les trois écrans
+héritent du correctif, et le prochain aussi.
+
+**Ce qui empêche la régression.** `tests/e2e/projects.spec.ts` mesure
+`scrollWidth - clientWidth` sur la fiche projet et vérifie que les cinq onglets
+restent atteignables. Vérifié par mutation : en retirant `overflow-x-auto`, le
+test échoue avec 115 px.
+
+**La leçon, consignée parce qu'elle se reproduira** : quand un clic est
+intercepté par un élément voisin, mesurer la largeur du document avant de
+soupçonner la pile de positionnement.
 
 ---
 

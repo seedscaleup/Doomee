@@ -170,14 +170,17 @@ collaborateur **sur mobile 375 px**, et la progression du projet qui suit les ac
 
 ---
 
-## LOT 6 — Objectifs · *critère MVP 3*
-1. Schéma `objectives` + taxonomie `objective_types` + seed.
-2. CRUD objectif : type, métrique, cible, unité, **devise** (ADR-024 : stockage + affichage, pas de conversion), période, responsable.
-3. Écran « Objectifs » du projet : `Objectif → Résultat réel → Écart → Analyse` (colonne « réel » vide à ce stade).
-4. Service `gap` (pur, testé) : écart, % d'atteinte, direction de la métrique. **Refuse de calculer un écart entre deux devises différentes** et le signale (ADR-024).
-5. Catalogue `metrics` + seed des 24 métriques, y compris les métriques dérivées.
+## LOT 6 — Objectifs · *critère MVP 3* — ✅ **terminé**
+1. ✅ Schéma `objectives` + taxonomie `objective_types` + seed, RLS et isolation générée.
+2. ✅ CRUD objectif : type, métrique, cible, unité, **devise** (stockage + affichage, aucune conversion), période, responsable.
+3. ✅ Onglet « Objectifs » du projet : `Objectif → Résultat réel → Écart`, colonne « réel » annoncée comme en attente plutôt que vide.
+4. ✅ Service `gap` pur et testé : écart, % d'atteinte, verdict selon la **direction** de la métrique, % de période écoulée, statut suggéré. **Refuse de comparer deux devises** et le dit (ADR-046).
+5. ✅ Catalogue `metrics` + seed des **24 métriques**, avec agrégation, direction, décimales et formule des métriques dérivées (ADR-047).
 
-✅ **Sortie** : E2E « définir les objectifs d'un projet ».
+✅ **Sortie** : E2E « définir les objectifs d'un projet » ✅ FR + EN, plus le refus d'une période
+inversée et celui d'une devise sans montant.
+
+> `current_value` reste NULL : c'est le LOT 7 qui le remplit, dans la transaction du résultat.
 
 ---
 

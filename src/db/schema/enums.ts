@@ -36,6 +36,37 @@ export const actionStatus = pgEnum('action_status', [
   'cancelled',
 ])
 
+export const objectiveStatus = pgEnum('objective_status', [
+  'draft',
+  'active',
+  'achieved',
+  'missed',
+  'cancelled',
+])
+
+/** What a metric's numbers ARE — decides how they are formatted and summed. */
+export const metricKind = pgEnum('metric_kind', [
+  'integer',
+  'decimal',
+  'currency',
+  'percent',
+  'ratio',
+  'duration',
+])
+
+/** How several measurements of one metric become one number over a period. */
+export const metricAgg = pgEnum('metric_agg', ['sum', 'avg', 'last', 'max', 'min'])
+
+/**
+ * Whether more is better. Without it, "we are 20% off target" says nothing:
+ * 20% below on revenue is a miss, 20% below on cost per lead is a win.
+ */
+export const metricDirection = pgEnum('metric_direction', [
+  'higher_is_better',
+  'lower_is_better',
+  'neutral',
+])
+
 export const projectStatus = pgEnum('project_status', [
   'to_start',
   'in_progress',

@@ -440,6 +440,13 @@
       "deleted": "{actor} a supprimé {name}",
       "commented": "{actor} a commenté {name}",
       "collaborators_changed": "{actor} a modifié les collaborateurs de {name}"
+    },
+    "objective": {
+      "created": "{actor} a défini l'objectif {name}",
+      "updated": "{actor} a modifié l'objectif {name}",
+      "achieved": "{actor} a marqué {name} comme atteint",
+      "missed": "{actor} a marqué {name} comme manqué",
+      "deleted": "{actor} a supprimé l'objectif {name}"
     }
   },
   "projects": {
@@ -464,6 +471,7 @@
     },
     "tabs": {
       "overview": "Informations",
+      "objectives": "Objectifs",
       "members": "Équipe",
       "milestones": "Jalons",
       "activity": "Historique"
@@ -665,5 +673,65 @@
       "unavailable": "Le mode focus s'ouvre à partir de trois actions.",
       "finished": "C'est tout pour maintenant."
     }
+  },
+  "objectives": {
+    "title": "Objectifs",
+    "description": "Ce que ce projet cherche à obtenir — et où on en est.",
+    "new": "Nouvel objectif",
+    "emptyTitle": "Aucun objectif",
+    "emptyDescription": "Sans objectif, un résultat est un chiffre sans point de comparaison. C'est le premier pas de la boucle.",
+    "columns": {
+      "objective": "Objectif",
+      "target": "Cible",
+      "actual": "Résultat réel",
+      "gap": "Écart",
+      "status": "Statut",
+      "period": "Période"
+    },
+    "form": {
+      "createTitle": "Nouvel objectif",
+      "editTitle": "Modifier l'objectif",
+      "title": "Intitulé",
+      "description": "Description",
+      "type": "Type d'objectif",
+      "metric": "Métrique",
+      "metricHint": "La métrique décide comment les résultats seront agrégés et si « plus » est mieux.",
+      "targetValue": "Valeur cible",
+      "unit": "Unité",
+      "currency": "Devise",
+      "currencyHint": "À renseigner si la cible est un montant. Aucune conversion n'est faite.",
+      "periodStart": "Début",
+      "periodEnd": "Fin",
+      "status": "Statut",
+      "owner": "Responsable",
+      "isClientVisible": "Visible par le client",
+      "noMetric": "Objectif non chiffré",
+      "failed": "Impossible d'enregistrer cet objectif."
+    },
+    "gap": {
+      "ahead": "En avance",
+      "onTrack": "Dans les clous",
+      "behind": "En retard",
+      "achievement": "{percent} % de la cible",
+      "noTarget": "Pas de cible chiffrée",
+      "noResult": "Aucun résultat saisi",
+      "zeroTarget": "Cible à zéro : l'écart n'a pas de sens",
+      "currencyMismatch": "Cible en {target}, résultat en {current} — Doomee ne convertit pas les devises.",
+      "elapsed": "{percent} % de la période écoulée",
+      "suggested": "L'écart suggère : {status}"
+    },
+    "period": {
+      "notStarted": "Pas encore commencée",
+      "running": "En cours",
+      "ended": "Terminée",
+      "undated": "Sans période"
+    },
+    "delete": {
+      "action": "Supprimer",
+      "title": "Supprimer cet objectif ?",
+      "description": "Il disparaît du projet. Les résultats déjà saisis sont conservés.",
+      "confirm": "Supprimer"
+    },
+    "awaitingResults": "Les résultats rempliront cette colonne dès la première saisie."
   }
 }

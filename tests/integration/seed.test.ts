@@ -8,6 +8,8 @@ import {
   type TaxonomySeed,
 } from '@/db/seed/action-taxonomies'
 import { INDUSTRY_SEED } from '@/db/seed/industries'
+import { METRIC_SEED } from '@/db/seed/metrics'
+import { OBJECTIVE_TYPE_SEED } from '@/db/seed/objective-taxonomies'
 
 /** Every seeded taxonomy, checked by the same rules — a new one is one line. */
 const TAXONOMIES: readonly { table: string; entries: readonly TaxonomySeed[] }[] = [
@@ -15,6 +17,8 @@ const TAXONOMIES: readonly { table: string; entries: readonly TaxonomySeed[] }[]
   { table: 'action_types', entries: ACTION_TYPE_SEED },
   { table: 'action_categories', entries: ACTION_CATEGORY_SEED },
   { table: 'channels', entries: CHANNEL_SEED },
+  { table: 'objective_types', entries: OBJECTIVE_TYPE_SEED },
+  { table: 'metrics', entries: METRIC_SEED },
 ]
 
 const TOTAL = TAXONOMIES.reduce((sum, taxonomy) => sum + taxonomy.entries.length, 0)
@@ -98,6 +102,47 @@ describe('system data seed', () => {
     )
     // Same code as a system entry, different owner: the seed must leave it be.
     expect(rows[0]?.labels.fr).toBe('Le mien')
+  })
+
+  it('gives every metric an aggregation and a direction', async () => {
+    await seedSystemData(db.adminUrl)
+
+    const { rows } = await admin.query<{ code: string; aggregation: string; direction: string }>(
+      'SELECT code, aggregation, direction FROM metrics WHERE organization_id IS NULL',
+    )
+    expect(rows).toHaveLength(METRIC_SEED.length)
+
+    // Without these two an objective cannot be scored: "20% below target" is a
+    // miss on revenue and a win on cost per lead.
+    for (const row of rows) {
+      expect(row.aggregation, row.code).toBeTruthy()
+      expect(row.direction, row.code).toBeTruthy()
+    }
+  })
+
+  it('never sums a rate, and never treats a cost as better when higher', async () => {
+    await seedSystemData(db.adminUrl)
+
+    const { rows } = await admin.query<{ code: string; aggregation: string; direction: string }>(
+      `SELECT code, aggregation, direction FROM metrics
+        WHERE organization_id IS NULL AND code IN ('ctr', 'conversion_rate', 'spend', 'cpl', 'bugs')`,
+    )
+    const byCode = new Map(rows.map((row) => [row.code, row]))
+
+    // Two 3% weeks are not a 6% fortnight.
+    expect(byCode.get('ctr')?.aggregation).toBe('avg')
+    expect(byCode.get('conversion_rate')?.aggregation).toBe('avg')
+
+    for (const code of ['spend', 'cpl', 'bugs']) {
+      expect(byCode.get(code)?.direction, code).toBe('lower_is_better')
+    }
+  })
+
+  it('gives every computed metric a formula, and no other metric one', () => {
+    for (const metric of METRIC_SEED) {
+      if (metric.isComputed) expect(metric.formula, metric.code).toBeTruthy()
+      else expect(metric.formula, metric.code).toBeUndefined()
+    }
   })
 
   it.each(TAXONOMIES.map((taxonomy) => taxonomy.table))(

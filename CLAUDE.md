@@ -29,10 +29,10 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | **LOT 5 terminé et vérifié** — `pnpm verify` vert. **CHECKPOINT 1 atteint (LOT 0 → 5)** |
+| **Phase actuelle** | **LOT 6 terminé et vérifié** — `pnpm verify` vert. CHECKPOINT 1 validé le 2026-09-15 |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | Domaine action : `actions` · `action_collaborators` · `comments` · `attachments` + taxonomies seedées, création rapide, kanban, **My Work**, **Focus Mode**, commentaires internes par défaut, compteurs projet réécrits en transaction |
-| **Prochaine étape** | **LOT 6 — objectifs**, après validation du CHECKPOINT 1 |
+| **Dernier jalon** | Objectifs : `objectives` · `objective_types` · **`metrics` (24 seedées)**, service `gap` pur qui refuse de comparer deux devises (ADR-046), onglet `Objectif → Réel → Écart` |
+| **Prochaine étape** | **LOT 7 — résultats & formulaires intelligents ⭐** (le lot à ne pas compresser) |
 | **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md` |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
@@ -262,6 +262,11 @@ pnpm verify           # tout, dans l'ordre de la CI
 | ❌ `Promise.all` de plusieurs requêtes sur le même `db` | → une transaction = une connexion = une requête à la fois (ADR-044) |
 | ❌ Un `catch` qui enveloppe plus que l'appel réseau | → il attribue à l'écriture des erreurs qui ne sont pas les siennes |
 | ❌ Une permission `*_own` sans règle de ligne | → c'est `*_any` avec un nom rassurant ; `policy.ts` (ADR-043) |
+| ❌ Un écart incalculable rendu comme `null` | → union discriminée avec la **raison** ; une devise incompatible est une **erreur**, pas une absence (ADR-046) |
+| ❌ Sommer un taux, ou noter un coût à l'endroit | → `aggregation` et `direction` sont des colonnes de `metrics` (ADR-047) |
+| ❌ Lire un `numeric(20,4)` comme un `number` | → le driver renvoie une **chaîne** ; passer par `toNumber` |
+| ❌ Une rangée d'onglets ou de filtres qui déborde | → `overflow-x-auto` **sur la rangée**, `shrink-0` sur les éléments ; sinon c'est la page qui défile et **toutes** les cibles se décalent (ADR-049) |
+| ❌ Un clic E2E « intercepté » par l'élément d'à côté | → mesurer `scrollWidth - clientWidth` **avant** de soupçonner le z-index ou le sticky |
 | ❌ Un composant client qui importe le barrel d'un module | → importer `mutations.ts` ou `service.ts` (ADR-030) |
 | ❌ Membre `INHERIT` de `app_user` et `app_portal` | → `NOINHERIT`, sinon union des politiques RLS (ADR-029) |
 | ❌ Une page qui appelle `requireSession()` directement | → `requirePageSession(locale)` : layout et page rendent en parallèle |

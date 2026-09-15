@@ -8,11 +8,14 @@ import {
   PageHeader,
   ProgressRing,
   StatusBadge,
+  Tabs,
   Timeline,
   type TimelineEntry,
 } from '@/components/patterns'
 import { Button } from '@/components/ui/field'
 import { Link, useRouter } from '@/i18n/navigation'
+import type { Locale } from '@/i18n/routing'
+import type { MetricOption, ObjectiveRow, TaxonomyOption } from '@/modules/objectives/types'
 import { archiveProject } from '@/modules/projects/mutations'
 import { daysUntil, isOverdue, priorityTone, statusTone } from '@/modules/projects/service'
 import type {
@@ -25,6 +28,7 @@ import type {
 import { ProjectFormSheet } from '../project-form-sheet'
 import { MembersPanel } from './members-panel'
 import { MilestonesPanel } from './milestones-panel'
+import { ObjectivesPanel } from './objectives-panel'
 
 type ActivityEntry = {
   id: string
@@ -34,13 +38,17 @@ type ActivityEntry = {
   createdAt: string
 }
 
-const TABS = ['overview', 'members', 'milestones', 'activity'] as const
+const TABS = ['overview', 'objectives', 'members', 'milestones', 'activity'] as const
 type Tab = (typeof TABS)[number]
 
 export function ProjectDetailScreen({
   project,
   members,
   milestones,
+  objectives,
+  metrics,
+  objectiveTypes,
+  locale,
   clients,
   colleagues,
   activity,
@@ -50,6 +58,10 @@ export function ProjectDetailScreen({
   project: ProjectDetail
   members: ProjectMemberRow[]
   milestones: MilestoneRow[]
+  objectives: ObjectiveRow[]
+  metrics: MetricOption[]
+  objectiveTypes: TaxonomyOption[]
+  locale: Locale
   clients: ClientOption[]
   colleagues: ColleagueOption[]
   activity: ActivityEntry[]
@@ -109,26 +121,29 @@ export function ProjectDetailScreen({
 
       <ProjectSummary project={project} />
 
-      <div role="tablist" aria-label={project.name} className="flex gap-1 border-b border-border">
-        {TABS.map((name) => (
-          <button
-            key={name}
-            type="button"
-            role="tab"
-            aria-selected={tab === name}
-            onClick={() => setTab(name)}
-            className={
-              tab === name
-                ? 'min-h-touch border-b-2 border-doomee-black px-3 text-label font-semibold'
-                : 'min-h-touch border-b-2 border-transparent px-3 text-label text-muted'
-            }
-          >
-            {t(`tabs.${name}`)}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={TABS.map((name) => ({ key: name, label: t(`tabs.${name}`) }))}
+        active={tab}
+        onSelect={setTab}
+        label={project.name}
+      />
 
       {tab === 'overview' ? <Overview project={project} /> : null}
+
+      {tab === 'objectives' ? (
+        <ObjectivesPanel
+          projectId={project.id}
+          objectives={objectives}
+          metrics={metrics}
+          types={objectiveTypes}
+          people={colleagues.map((colleague) => ({
+            userId: colleague.userId,
+            name: colleague.name,
+          }))}
+          locale={locale}
+          canManage={canManage}
+        />
+      ) : null}
 
       {tab === 'members' ? (
         <MembersPanel

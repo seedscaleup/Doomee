@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { can } from '@/lib/permissions'
 import { listActivity } from '@/modules/activity'
+import { listMetrics, listObjectives, listObjectiveTypes } from '@/modules/objectives'
 import {
   getProject,
   listClientOptions,
@@ -36,13 +37,17 @@ export default async function ProjectPage(props: {
    */
   const canManage = can(actor, 'project.update')
 
-  const [members, milestones, clients, colleagues, activity] = await Promise.all([
-    listProjectMembers({ projectId }),
-    listMilestones({ projectId }),
-    canManage ? listClientOptions() : [],
-    canManage ? listColleagueOptions() : [],
-    listActivity({ projectId, limit: 30 }),
-  ])
+  const [members, milestones, objectives, metrics, objectiveTypes, clients, colleagues, activity] =
+    await Promise.all([
+      listProjectMembers({ projectId }),
+      listMilestones({ projectId }),
+      listObjectives({ projectId }),
+      listMetrics(),
+      listObjectiveTypes(),
+      canManage ? listClientOptions() : [],
+      canManage ? listColleagueOptions() : [],
+      listActivity({ projectId, limit: 30 }),
+    ])
 
   const t = await getTranslations('projects')
 
@@ -51,6 +56,10 @@ export default async function ProjectPage(props: {
       project={project}
       members={members}
       milestones={milestones}
+      objectives={objectives}
+      metrics={metrics}
+      objectiveTypes={objectiveTypes}
+      locale={locale === 'en' ? 'en' : 'fr'}
       clients={clients}
       colleagues={colleagues}
       canManage={canManage}

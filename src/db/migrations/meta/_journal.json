@@ -78,6 +78,13 @@
       "when": 1789456762304,
       "tag": "0010_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789459948259,
+      "tag": "0011_objectives",
+      "breakpoints": true
     }
   ]
 }

@@ -228,6 +228,10 @@ Seed système (extrait) : `impressions`, `reach`, `views`, `reactions`, `comment
 
 Les métriques calculées sont dérivées **à la lecture** par le service `metrics`, jamais stockées en double.
 
+> 24 métriques seedées au LOT 6. `aggregation` et `direction` ne sont pas décoratives (ADR-047) :
+> sans la première on somme un taux, sans la seconde on note un coût à l'envers. Elles sont
+> corrigées en place à chaque seed, parce qu'une direction fausse a noté des objectifs à l'envers.
+
 ### `result_form_templates` — formulaires intelligents
 `id` · `organization_id` NULL · `action_type_id` FK NULL · `code` · `labels` · `version int` · `is_active`
 **UNIQUE (organization_id, action_type_id, version)**
@@ -360,8 +364,19 @@ Les métriques calculées sont dérivées **à la lecture** par le service `metr
 | `status` | objective_status | |
 | `owner_user_id` | uuid | |
 | `is_client_visible` | boolean DEFAULT true | |
-| `current_value` | numeric(20,4) NULL | **dénormalisé**, recalculé à chaque résultat |
+| `current_value` | numeric(20,4) NULL | **dénormalisé**, recalculé à chaque résultat (LOT 7) |
 | `achievement_percent` | int NULL | **dénormalisé** |
+| `created_by` `updated_by` · `created_at` `updated_at` `deleted_at` | | |
+
+**FK composite (organization_id, project_id)** · **UNIQUE (organization_id, id)**
+
+> `is_client_visible` vaut **`true`** par défaut — la seule exception du modèle, et elle est
+> délibérée (ADR-048) : l'objectif est ce que le client paie. Ce qui reste interne, c'est l'analyse
+> autour de lui.
+>
+> Un montant en `numeric(20,4)` revient du driver sous forme de **chaîne** : un `number` JavaScript
+> ne peut pas contenir toutes les valeurs de la colonne. `toNumber` fait la conversion en un seul
+> endroit ; un test d'intégration vérifie que `5000000.1234` revient exact.
 
 **Calcul de l'écart** — le service `objectives` agrège :
 ```sql

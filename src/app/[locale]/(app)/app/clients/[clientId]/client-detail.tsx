@@ -7,6 +7,7 @@ import {
   EmptyState,
   PageHeader,
   StatusBadge,
+  Tabs,
   Timeline,
   type TimelineEntry,
 } from '@/components/patterns'
@@ -116,24 +117,12 @@ export function ClientDetail({
 
       <StatusBadge label={tStatus(client.status)} tone={statusTone(client.status)} />
 
-      <div role="tablist" aria-label={client.name} className="flex gap-1 border-b border-border">
-        {TABS.map((name) => (
-          <button
-            key={name}
-            type="button"
-            role="tab"
-            aria-selected={tab === name}
-            onClick={() => setTab(name)}
-            className={
-              tab === name
-                ? 'min-h-touch border-b-2 border-doomee-black px-3 text-label font-semibold'
-                : 'min-h-touch border-b-2 border-transparent px-3 text-label text-muted'
-            }
-          >
-            {t(`tabs.${name}`)}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={TABS.map((name) => ({ key: name, label: t(`tabs.${name}`) }))}
+        active={tab}
+        onSelect={setTab}
+        label={client.name}
+      />
 
       {tab === 'overview' ? (
         <div className="flex flex-col gap-6">

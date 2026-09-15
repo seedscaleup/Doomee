@@ -440,6 +440,13 @@
       "deleted": "{actor} deleted {name}",
       "commented": "{actor} commented on {name}",
       "collaborators_changed": "{actor} changed the collaborators of {name}"
+    },
+    "objective": {
+      "created": "{actor} set the objective {name}",
+      "updated": "{actor} updated the objective {name}",
+      "achieved": "{actor} marked {name} as achieved",
+      "missed": "{actor} marked {name} as missed",
+      "deleted": "{actor} deleted the objective {name}"
     }
   },
   "projects": {
@@ -464,6 +471,7 @@
     },
     "tabs": {
       "overview": "Overview",
+      "objectives": "Objectives",
       "members": "Team",
       "milestones": "Milestones",
       "activity": "History"
@@ -665,5 +673,65 @@
       "unavailable": "Focus mode opens from three actions.",
       "finished": "That is all for now."
     }
+  },
+  "objectives": {
+    "title": "Objectives",
+    "description": "What this project is trying to achieve — and where it stands.",
+    "new": "New objective",
+    "emptyTitle": "No objectives",
+    "emptyDescription": "Without an objective, a result is a number with nothing to compare it to. It is the first step of the loop.",
+    "columns": {
+      "objective": "Objective",
+      "target": "Target",
+      "actual": "Actual",
+      "gap": "Gap",
+      "status": "Status",
+      "period": "Period"
+    },
+    "form": {
+      "createTitle": "New objective",
+      "editTitle": "Edit objective",
+      "title": "Title",
+      "description": "Description",
+      "type": "Objective type",
+      "metric": "Metric",
+      "metricHint": "The metric decides how results are aggregated and whether more is better.",
+      "targetValue": "Target value",
+      "unit": "Unit",
+      "currency": "Currency",
+      "currencyHint": "Set it if the target is an amount. No conversion is ever done.",
+      "periodStart": "From",
+      "periodEnd": "To",
+      "status": "Status",
+      "owner": "Owner",
+      "isClientVisible": "Visible to the client",
+      "noMetric": "Objective with no number",
+      "failed": "Could not save this objective."
+    },
+    "gap": {
+      "ahead": "Ahead",
+      "onTrack": "On track",
+      "behind": "Behind",
+      "achievement": "{percent}% of target",
+      "noTarget": "No numeric target",
+      "noResult": "No result recorded yet",
+      "zeroTarget": "Target is zero: the gap has no meaning",
+      "currencyMismatch": "Target in {target}, result in {current} — Doomee does not convert currencies.",
+      "elapsed": "{percent}% of the period elapsed",
+      "suggested": "The gap suggests: {status}"
+    },
+    "period": {
+      "notStarted": "Not started",
+      "running": "Running",
+      "ended": "Ended",
+      "undated": "No period"
+    },
+    "delete": {
+      "action": "Delete",
+      "title": "Delete this objective?",
+      "description": "It leaves the project. Results already recorded are kept.",
+      "confirm": "Delete"
+    },
+    "awaitingResults": "Results will fill this column as soon as the first one is recorded."
   }
 }
