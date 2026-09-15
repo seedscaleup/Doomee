@@ -1909,6 +1909,130 @@ base. `tests/e2e/portal.spec.ts` parcourt le cycle complet dans deux navigateurs
 
 ---
 
+## ADR-065 — Le client voit la moitié tournée vers lui
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 10
+
+**Contexte.** Un insight partagé avec le client est la page la plus précieuse du
+produit : « voilà ce qu'on a appris de votre budget, et voilà ce qu'on
+recommande ». Le **même** insight montré en entier lui livrerait le
+post-mortem interne de l'agence.
+
+**Décision.** Quatre champs en interne, **trois** dans la vue portail :
+
+| Champ | Portail |
+|---|---|
+| `what_worked` | ✅ |
+| `what_we_learned` | ✅ |
+| `recommendation` | ✅ |
+| **`what_didnt`** | ❌ **jamais** |
+
+« Ce qui n'a pas marché de notre côté » est une conversation qu'une agence
+**choisit** d'avoir. Une colonne ne doit pas l'avoir à sa place — surtout pas
+par le jeu d'un drapeau coché un vendredi soir.
+
+Ce n'est pas de la dissimulation : `what_we_learned` et `recommendation` sont
+partagés, et c'est là que l'enseignement vit. Ce qui reste interne, c'est
+l'**attribution** de l'échec, pas l'échec.
+
+L'insight reste en **opt-in** comme tout le reste (règle 2), et la portée suit
+la règle habituelle : un insight de projet passe par `portal_sees_project`, un
+insight de client par ses `client_ids`.
+
+**Ce qui empêche la régression.** `what_didnt` est dans la liste noire de
+`tests/integration/portal-leak.test.ts`, qui balaie **toutes** les colonnes de
+**toutes** les vues du schéma `portal` depuis le catalogue. Plus deux tests
+nommés : la vue renvoie les trois champs tournés vers l'extérieur, et la colonne
+est refusée dans la vue **comme** dans la table de base.
+
+---
+
+## ADR-066 — La boucle se parcourt en un clic, ou elle ne se parcourt pas
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 10
+
+**Contexte.** C'est le lot où le produit doit tenir sa promesse. Les six étapes
+existaient toutes ; rien ne les **reliait**. Un utilisateur pouvait lire un
+résultat, ouvrir un autre écran, retaper son analyse dans un insight, en relire
+la recommandation, ouvrir un troisième écran et retaper la même phrase en titre
+d'action. Chacune de ces recopies est un endroit où l'on renonce.
+
+**Décision.** Les deux arêtes qui manquaient deviennent des liens, et les deux
+transportent ce qui a déjà été écrit :
+
+| Arête | Ce qui est transporté |
+|---|---|
+| `RÉSULTAT → INSIGHT` | l'`analysis` remplit « ce qu'on en apprend », la `recommendation` remplit « ce qu'on recommande », et le résultat est **attaché** |
+| `INSIGHT → PROCHAINE ACTION` | la `recommendation` devient le **titre** de l'action, coupé sur une frontière de mot |
+
+*Less typing* (règle 10) n'est pas une commodité ici : c'est la condition pour
+que la boucle soit réellement parcourue.
+
+**Trois écritures, une transaction.** `createNextAction` écrit l'action, la
+ligne de liaison et le `source_insight_id` de l'action **ensemble**. Une
+prochaine action qui existerait sans son lien serait indiscernable d'une tâche
+ordinaire, et l'affirmation « ceci est né de cet insight » cesserait
+silencieusement d'être vérifiable.
+
+**Le bouton refuse d'ouvrir un formulaire vide.** Un insight sans
+recommandation n'a rien à produire : le bouton n'apparaît pas, une phrase dit
+pourquoi (ADR-041), et le serveur refuse de toute façon.
+
+**`ON DELETE SET NULL`, pas `CASCADE`.** Supprimer un insight ne supprime pas
+les actions qu'il a fait naître. Le travail a été fait ; c'est le raisonnement
+qu'on retire.
+
+**Ce qui empêche la régression.** `tests/e2e/loop.spec.ts` — le test qui prouve
+la proposition de valeur — parcourt les six étapes d'un bout à l'autre et
+vérifie que l'analyse et la recommandation **arrivent avec le clic**, sans avoir
+été retapées. En FR et en EN, desktop et mobile.
+
+---
+
+## ADR-067 — La boucle se lit, et elle dit où elle s'arrête
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 10
+
+**Contexte.** Le `CLAUDE.md` demande, avant d'écrire quoi que ce soit : « est-ce
+que ça aide à parcourir la boucle ? ». L'écran projet ne répondait nulle part à
+la question pour le projet lui-même.
+
+**Décision.** `readLoop` — **pur** — prend six compteurs et renvoie, pour chaque
+étape, ce qu'elle contient et si elle est **bloquée**. Le `LoopStrip` le dessine
+sur la fiche projet.
+
+**Le choix qui compte : une seule étape est bloquée à la fois.** C'est la
+**première** case vide après une suite de cases pleines. Un projet avec des
+objectifs et des actions mais sans résultats est bloqué à RÉSULTAT ; lui dire
+« vous n'avez aucun insight » serait vrai, inutile, et deux étapes trop loin. Un
+écran qui propose six suggestions n'en fait suivre aucune.
+
+Le jaune marque cette seule étape — jamais les étapes déjà franchies. Le jaune
+est la couleur de **ce qu'il faut faire ensuite** (règle 9) ; six pastilles
+jaunes ne désignent rien.
+
+**« Bouclée » a un sens précis** : ce n'est pas « les six étapes sont non
+vides », c'est la **dernière arête** — un insight a produit une prochaine
+action. C'est exactement l'affirmation que Doomee fait, et elle est vraie ou
+fausse pour un projet donné.
+
+Les six compteurs arrivent en **une** requête : c'est une bande de six pastilles
+sur une fiche, pas six allers-retours.
+
+**Un piège rencontré.** Zod refuse `.partial()` sur un schéma portant un
+`.refine()` — et il le refuse à l'**exécution**. `createInsightSchema.partial()`
+passait le typecheck et cassait le `next build` à l'évaluation du module. Le
+champ d'objet est désormais séparé du raffinement, ce qui rend l'erreur
+impossible à réécrire.
+
+**Ce qui empêche la régression.** `tests/unit/insights-service.test.ts` : le
+premier trou et non tous les trous, exactement une étape bloquée même avec
+plusieurs trous, « bouclée » qui exige les deux bouts, et le pourcentage arrondi
+à l'entier. `tests/e2e/loop.spec.ts` vérifie que la bande dit « prochaine étape :
+objectif » sur un projet neuf et « boucle bouclée » à la fin du parcours.
+
+---
+
 ## Décisions tranchées avec le commanditaire — 2026-09-14
 
 | # | Sujet | Décision | ADR |

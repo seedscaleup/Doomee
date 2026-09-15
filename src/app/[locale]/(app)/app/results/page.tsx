@@ -1,11 +1,12 @@
 import { getTranslations } from 'next-intl/server'
+import { can } from '@/lib/permissions'
 import {
   listResultFilterOptions,
   listResults,
   metricBreakdown,
   metricTotals,
 } from '@/modules/results'
-import { requirePageSession } from '@/server'
+import { requireActor, requirePageSession } from '@/server'
 import { type Filters, ResultsScreen } from './results-screen'
 
 type Search = Partial<Record<keyof Filters, string>>
@@ -17,6 +18,7 @@ export default async function ResultsPage(props: {
   const { locale } = await props.params
   const search = await props.searchParams
   await requirePageSession(locale)
+  const actor = await requireActor()
 
   /**
    * Thirty days ending today, unless asked otherwise. A window that defaults to
@@ -73,6 +75,7 @@ export default async function ResultsPage(props: {
       filters={filters}
       options={options}
       locale={locale === 'en' ? 'en' : 'fr'}
+      canCreateInsight={can(actor, 'insight.create')}
       labels={{ title: t('title'), description: t('description') }}
     />
   )

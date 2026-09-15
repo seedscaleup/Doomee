@@ -67,6 +67,17 @@ export const actions = pgTable(
     blockedReason: text('blocked_reason'),
     /** Manual order within a kanban column. */
     position: integer('position').notNull().default(0),
+    /**
+     * Where this action CAME FROM — the last edge of the loop
+     * (`INSIGHT → RECOMMANDATION → PROCHAINE ACTION`).
+     *
+     * A plain nullable uuid rather than a composite FK to `insights`: declaring
+     * it here would make `actions.ts` import `insights.ts`, which imports
+     * `actions.ts` for `insight_actions`. The constraint is added in migration
+     * 0016, where both tables already exist, and the schema-drift test checks
+     * that the column is declared on both sides (ADR-036).
+     */
+    sourceInsightId: uuid('source_insight_id'),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
     updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
     ...timestamps,

@@ -53,7 +53,11 @@
     "deliverable_published": "A published deliverable no longer changes state.",
     "deliverable_transition_illegal": "That change of state is not allowed.",
     "deliverable_not_found": "This deliverable cannot be found.",
-    "file_not_found": "This file cannot be found."
+    "file_not_found": "This file cannot be found.",
+    "insight_not_found": "This insight cannot be found.",
+    "insight_no_recommendation": "This insight recommends nothing: there is no action to take from it.",
+    "result_not_found": "One of the selected results cannot be found.",
+    "period_inverted": "The period ends before it starts."
   },
   "notFound": {
     "title": "Page not found",
@@ -475,6 +479,10 @@
       "internal_changes_requested": "{actor} requested changes on version {version}",
       "client_approved": "{actor} approved version {version}",
       "client_changes_requested": "{actor} requested changes on version {version}"
+    },
+    "insight": {
+      "created": "{actor} created the insight {name}",
+      "action_created": "{actor} created the action {name} from an insight"
     }
   },
   "projects": {
@@ -571,7 +579,8 @@
       "title": "Archive this project?",
       "description": "It leaves the active lists. Its data is kept.",
       "confirm": "Archive"
-    }
+    },
+    "loop": "The loop"
   },
   "actions": {
     "title": "Actions",
@@ -1009,6 +1018,87 @@
       "send": "Send",
       "failed": "This message could not be sent.",
       "onlyShared": "Your messages are visible to the team."
+    }
+  },
+  "insights": {
+    "title": "Insights",
+    "description": "What we learned, and what we do with it.",
+    "new": "+ New insight",
+    "emptyTitle": "No insight yet",
+    "emptyDescription": "An insight is the moment a result becomes a decision.",
+    "noneForFilter": "No insight matches these filters.",
+    "back": "← Back to insights",
+    "unsubstantiated": "To complete",
+    "fromResult": "Create an insight from this result",
+    "form": {
+      "createTitle": "New insight",
+      "editTitle": "Edit insight",
+      "name": "Title",
+      "namePlaceholder": "e.g. The carousel format outperforms",
+      "project": "Project",
+      "client": "Client",
+      "noProject": "No project",
+      "noClient": "No client",
+      "whatWorked": "What worked",
+      "whatDidnt": "What did not work",
+      "whatWeLearned": "What we learned",
+      "recommendation": "What we recommend",
+      "periodStart": "From",
+      "periodEnd": "To",
+      "isClientVisible": "Visible to the client",
+      "isClientVisibleHint": "The client sees what worked, the lesson and the recommendation — not \"what did not work\".",
+      "results": "Results it is built on",
+      "resultsHint": "An insight with no result is an opinion.",
+      "failed": "This insight could not be saved."
+    },
+    "filters": {
+      "all": "All",
+      "project": "Project",
+      "client": "Client",
+      "search": "Search"
+    },
+    "columns": {
+      "title": "Insight",
+      "project": "Project",
+      "results": "Results",
+      "actions": "Actions",
+      "author": "By"
+    },
+    "nextAction": {
+      "title": "Create the next action",
+      "cta": "→ Create the next action",
+      "actionTitle": "Title",
+      "project": "Project",
+      "assignee": "Owner",
+      "dueDate": "Due date",
+      "created": "Action created.",
+      "none": "No action born of this insight.",
+      "needsRecommendation": "Add a recommendation to be able to draw an action from it.",
+      "failed": "This action could not be created."
+    },
+    "results": {
+      "title": "Linked results",
+      "none": "No linked result."
+    },
+    "delete": {
+      "action": "Delete",
+      "title": "Delete this insight?",
+      "description": "The actions born of it are kept.",
+      "confirm": "Delete"
+    },
+    "loop": {
+      "title": "The loop",
+      "percent": "{percent}% of the loop travelled",
+      "closed": "Loop closed: an insight produced a next action.",
+      "blocked": "Next step: {step}",
+      "step": {
+        "objective": "Objective",
+        "action": "Action",
+        "deliverable": "Deliverable",
+        "result": "Result",
+        "insight": "Insight",
+        "nextAction": "Next action"
+      }
     }
   }
 }

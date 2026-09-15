@@ -5,6 +5,8 @@ import { useState } from 'react'
 import {
   ConfirmDialog,
   EmptyState,
+  type LoopStageView,
+  LoopStrip,
   PageHeader,
   ProgressRing,
   StatusBadge,
@@ -52,6 +54,7 @@ export function ProjectDetailScreen({
   clients,
   colleagues,
   activity,
+  loop,
   canManage,
   backLabel,
 }: {
@@ -65,6 +68,8 @@ export function ProjectDetailScreen({
   clients: ClientOption[]
   colleagues: ColleagueOption[]
   activity: ActivityEntry[]
+  /** Where this project stands in the central loop (LOT 10). */
+  loop: { stages: LoopStageView[]; caption: string }
   /** Hiding is a courtesy, not the control: the gateway refuses either way. */
   canManage: boolean
   backLabel: string
@@ -128,7 +133,14 @@ export function ProjectDetailScreen({
         label={project.name}
       />
 
-      {tab === 'overview' ? <Overview project={project} /> : null}
+      {tab === 'overview' ? (
+        <div className="flex flex-col gap-6">
+          {/* The product's own diagram, filled in with this project's counts —
+              and pointing at the step where the loop currently stops. */}
+          <LoopStrip stages={loop.stages} label={t('loop')} caption={loop.caption} />
+          <Overview project={project} />
+        </div>
+      ) : null}
 
       {tab === 'objectives' ? (
         <ObjectivesPanel

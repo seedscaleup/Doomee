@@ -53,7 +53,11 @@
     "deliverable_published": "Un livrable publié ne change plus d'état.",
     "deliverable_transition_illegal": "Ce changement d'état n'est pas permis.",
     "deliverable_not_found": "Ce livrable est introuvable.",
-    "file_not_found": "Ce fichier est introuvable."
+    "file_not_found": "Ce fichier est introuvable.",
+    "insight_not_found": "Cet insight est introuvable.",
+    "insight_no_recommendation": "Cet insight ne recommande rien : il n'y a pas d'action à en tirer.",
+    "result_not_found": "Un des résultats sélectionnés est introuvable.",
+    "period_inverted": "La période se termine avant de commencer."
   },
   "notFound": {
     "title": "Page introuvable",
@@ -475,6 +479,10 @@
       "internal_changes_requested": "{actor} a demandé des modifications sur la version {version}",
       "client_approved": "{actor} a validé la version {version}",
       "client_changes_requested": "{actor} a demandé des modifications sur la version {version}"
+    },
+    "insight": {
+      "created": "{actor} a créé l’insight {name}",
+      "action_created": "{actor} a créé l’action {name} depuis un insight"
     }
   },
   "projects": {
@@ -571,7 +579,8 @@
       "title": "Archiver ce projet ?",
       "description": "Il quitte les listes actives. Ses données sont conservées.",
       "confirm": "Archiver"
-    }
+    },
+    "loop": "La boucle"
   },
   "actions": {
     "title": "Actions",
@@ -1009,6 +1018,87 @@
       "send": "Envoyer",
       "failed": "Impossible d’envoyer ce message.",
       "onlyShared": "Vos messages sont visibles par l’équipe."
+    }
+  },
+  "insights": {
+    "title": "Insights",
+    "description": "Ce qu’on a appris, et ce qu’on en fait.",
+    "new": "+ Nouvel insight",
+    "emptyTitle": "Aucun insight pour l’instant",
+    "emptyDescription": "Un insight, c'est le moment où un résultat devient une décision.",
+    "noneForFilter": "Aucun insight ne correspond à ces filtres.",
+    "back": "← Retour aux insights",
+    "unsubstantiated": "À compléter",
+    "fromResult": "Créer un insight depuis ce résultat",
+    "form": {
+      "createTitle": "Nouvel insight",
+      "editTitle": "Modifier l’insight",
+      "name": "Titre",
+      "namePlaceholder": "Ex. Le format carrousel surperforme",
+      "project": "Projet",
+      "client": "Client",
+      "noProject": "Aucun projet",
+      "noClient": "Aucun client",
+      "whatWorked": "Ce qui a marché",
+      "whatDidnt": "Ce qui n’a pas marché",
+      "whatWeLearned": "Ce qu’on en apprend",
+      "recommendation": "Ce qu’on recommande",
+      "periodStart": "Du",
+      "periodEnd": "Au",
+      "isClientVisible": "Visible par le client",
+      "isClientVisibleHint": "Le client verra ce qui a marché, l'enseignement et la recommandation — pas « ce qui n'a pas marché ».",
+      "results": "Résultats sur lesquels il s’appuie",
+      "resultsHint": "Un insight sans résultat est un avis.",
+      "failed": "Impossible d’enregistrer cet insight."
+    },
+    "filters": {
+      "all": "Tous",
+      "project": "Projet",
+      "client": "Client",
+      "search": "Rechercher"
+    },
+    "columns": {
+      "title": "Insight",
+      "project": "Projet",
+      "results": "Résultats",
+      "actions": "Actions",
+      "author": "Par"
+    },
+    "nextAction": {
+      "title": "Créer la prochaine action",
+      "cta": "→ Créer la prochaine action",
+      "actionTitle": "Intitulé",
+      "project": "Projet",
+      "assignee": "Responsable",
+      "dueDate": "Échéance",
+      "created": "Action créée.",
+      "none": "Aucune action née de cet insight.",
+      "needsRecommendation": "Ajoutez une recommandation pour pouvoir en tirer une action.",
+      "failed": "Impossible de créer cette action."
+    },
+    "results": {
+      "title": "Résultats liés",
+      "none": "Aucun résultat lié."
+    },
+    "delete": {
+      "action": "Supprimer",
+      "title": "Supprimer cet insight ?",
+      "description": "Les actions qui en sont nées sont conservées.",
+      "confirm": "Supprimer"
+    },
+    "loop": {
+      "title": "La boucle",
+      "percent": "{percent} % de la boucle parcourue",
+      "closed": "Boucle bouclée : un insight a produit une prochaine action.",
+      "blocked": "Prochaine étape : {step}",
+      "step": {
+        "objective": "Objectif",
+        "action": "Action",
+        "deliverable": "Livrable",
+        "result": "Résultat",
+        "insight": "Insight",
+        "nextAction": "Prochaine action"
+      }
     }
   }
 }

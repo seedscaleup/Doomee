@@ -184,6 +184,43 @@ const FIXTURES: Record<string, Fixture> = {
       return id
     },
   },
+  insights: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const projectId = await FIXTURES.projects?.seed(query, organizationId)
+      await query(
+        'INSERT INTO insights (id, organization_id, project_id, title) VALUES ($1, $2, $3, $4)',
+        [id, organizationId, projectId, 'Insight'],
+      )
+      return id
+    },
+  },
+  insight_results: {
+    // A pure join table: no surrogate key, so the matrix tracks it by the
+    // column that identifies a row here.
+    idColumn: 'insight_id',
+    seed: async (query, organizationId) => {
+      const insightId = await FIXTURES.insights?.seed(query, organizationId)
+      const resultId = await FIXTURES.results?.seed(query, organizationId)
+      await query(
+        'INSERT INTO insight_results (organization_id, insight_id, result_id) VALUES ($1, $2, $3)',
+        [organizationId, insightId, resultId],
+      )
+      return String(insightId)
+    },
+  },
+  insight_actions: {
+    idColumn: 'insight_id',
+    seed: async (query, organizationId) => {
+      const insightId = await FIXTURES.insights?.seed(query, organizationId)
+      const actionId = await FIXTURES.actions?.seed(query, organizationId)
+      await query(
+        'INSERT INTO insight_actions (organization_id, insight_id, action_id) VALUES ($1, $2, $3)',
+        [organizationId, insightId, actionId],
+      )
+      return String(insightId)
+    },
+  },
   deliverables: {
     seed: async (query, organizationId) => {
       const id = newId()

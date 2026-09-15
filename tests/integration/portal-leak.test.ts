@@ -58,6 +58,9 @@ const FORBIDDEN_COLUMNS = new Set([
   'reviewer_user_id',
   'is_client_visible',
   'deleted_at',
+  // "What went wrong on our side" is a conversation an agency CHOOSES to have
+  // with its client. A column must not have it for them (ADR-065).
+  'what_didnt',
 ])
 
 describe('the client portal leaks nothing', () => {
@@ -265,6 +268,17 @@ describe('the client portal leaks nothing', () => {
     )
     into.attachments = attachmentId
 
+    const insightId = newId()
+    await query(
+      `INSERT INTO insights
+         (id, organization_id, project_id, title, what_worked, what_didnt,
+          what_we_learned, recommendation, is_client_visible)
+       VALUES ($1, $2, $3, 'Insight', 'Le carrousel marche', 'Nous avons livré en retard',
+               'Format court', 'Refaire un carrousel', $4)`,
+      [insightId, organizationId, projectId, shared],
+    )
+    into.insights = insightId
+
     const eventId = newId()
     await query(
       `INSERT INTO activity_events
@@ -336,6 +350,7 @@ describe('the client portal leaks nothing', () => {
     'comments',
     'files',
     'activity_events',
+    'insights',
   ] as const
 
   it.each(EXPOSED)('portal.%s shows the client’s own shared row', async (view) => {
@@ -392,6 +407,37 @@ describe('the client portal leaks nothing', () => {
     )
 
     expect(await idsIn('files')).not.toContain(orphan)
+  })
+
+  /**
+   * An insight shown to a client is the most valuable page in the product.
+   * The SAME insight shown whole would hand them the agency's own post-mortem.
+   * The row is visible; `what_didnt` is not in the view at all (ADR-065).
+   */
+  it('shows an insight’s outward half and keeps the post-mortem internal', async () => {
+    const rows = await asPortal((tx) =>
+      tx.execute(sql.raw('SELECT title, what_worked, recommendation FROM portal.insights')),
+    )
+    expect(rows.rows).toEqual([
+      {
+        title: 'Insight',
+        what_worked: 'Le carrousel marche',
+        recommendation: 'Refaire un carrousel',
+      },
+    ])
+
+    const error = await asPortal((tx) =>
+      tx.execute(sql.raw('SELECT what_didnt FROM portal.insights')),
+    ).catch((caught: unknown) => caught)
+    expect(causeOf(error)).toMatch(/does not exist|permission denied/i)
+  })
+
+  /** And not through the base table either. */
+  it('refuses public.insights.what_didnt', async () => {
+    const error = await asPortal((tx) =>
+      tx.execute(sql.raw('SELECT what_didnt FROM public.insights')),
+    ).catch((caught: unknown) => caught)
+    expect(causeOf(error)).toMatch(/permission denied/i)
   })
 
   it('shows the client their own account and no other', async () => {

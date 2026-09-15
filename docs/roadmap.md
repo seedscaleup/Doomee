@@ -260,15 +260,20 @@ décision sur la bonne version.
 
 ---
 
-## LOT 10 — Insights & bouclage · *critère MVP 10* ⭐
-1. Schéma `insights`, `insight_results`, `insight_actions` + `actions.source_insight_id`.
-2. Éditeur d'insight : `What worked` / `What didn't` / `What did we learn` / `What do we recommend`.
-3. Création d'un insight **depuis un résultat** (pré-rempli avec l'analyse et la recommandation existantes).
-4. **« Create next action »** depuis la recommandation → action créée, liée, assignable en un clic.
-5. Écran Insights : par projet, par client, par période.
-6. Visualisation de la boucle sur l'écran projet : `Objectif → Actions → Livrables → Résultats → Insights → Prochaines actions`.
+## LOT 10 — Insights & bouclage · *critère MVP 10* ⭐ — ✅ **terminé**
+1. ✅ Schéma `insights`, `insight_results`, `insight_actions` + `actions.source_insight_id` (FK composite `ON DELETE SET NULL`), RLS et isolation générée.
+2. ✅ Éditeur d'insight : les quatre questions d'une réunion de bilan, dans l'ordre où elles se posent. Seul le titre est obligatoire.
+3. ✅ Création d'un insight **depuis un résultat**, pré-remplie : l'`analysis` et la `recommendation` arrivent **avec le clic**, et le résultat est attaché (ADR-066).
+4. ✅ **« Créer la prochaine action »** depuis la recommandation → action créée, liée, assignable. Trois écritures, **une transaction**. Le bouton n'apparaît pas sans recommandation, et dit pourquoi.
+5. ✅ Écran Insights : filtres projet et recherche, badge « à compléter » sur un insight qui ne dit encore rien, compteur d'actions nées de chacun.
+6. ✅ **Visualisation de la boucle** sur l'écran projet : `LoopStrip`, six compteurs en une requête, **une seule étape bloquée** — la première case vide (ADR-067).
 
-✅ **Sortie** : E2E de la boucle complète — **le test qui prouve la proposition de valeur**.
+✅ **Sortie** : `tests/e2e/loop.spec.ts` — **le test qui prouve la proposition de valeur**. Six
+étapes d'un bout à l'autre, en FR et EN, desktop et mobile, avec la vérification que rien n'est
+retapé en chemin.
+
+> Côté portail, le client voit **trois** des quatre champs : « ce qui n'a pas marché » n'est dans
+> aucune vue (ADR-065). L'enseignement est partagé ; l'attribution de l'échec reste interne.
 
 ---
 

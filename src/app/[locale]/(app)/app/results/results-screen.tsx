@@ -35,6 +35,7 @@ export function ResultsScreen({
   filters,
   options,
   locale,
+  canCreateInsight,
   labels,
 }: {
   rows: ResultRow[]
@@ -44,9 +45,12 @@ export function ResultsScreen({
   filters: Filters
   options: FilterOptions
   locale: Locale
+  /** Hiding is a courtesy, not the control: the gateway refuses either way. */
+  canCreateInsight: boolean
   labels: { title: string; description: string }
 }) {
   const t = useTranslations('results')
+  const tInsights = useTranslations('insights')
   const format = useFormatter()
   const router = useRouter()
 
@@ -187,10 +191,13 @@ export function ResultsScreen({
       ) : (
         <ul className="flex flex-col gap-2">
           {rows.map((result) => (
-            <li key={result.id}>
+            <li
+              key={result.id}
+              className="flex flex-col gap-2 rounded-doomee border border-border bg-surface px-3 py-2"
+            >
               <Link
                 href={`/app/projects/${result.projectId}` as '/app'}
-                className="flex min-h-touch flex-col gap-1 rounded-doomee border border-border bg-surface px-3 py-2"
+                className="flex min-h-touch flex-col gap-1"
               >
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">
@@ -210,6 +217,19 @@ export function ResultsScreen({
                   <span className="text-label text-muted">{result.analysis}</span>
                 ) : null}
               </Link>
+
+              {/* `RÉSULTAT → ANALYSE → INSIGHT`, as one link. The insight form
+                  arrives pre-filled from the analysis and the recommendation
+                  this result already carries — the reading was done once, and
+                  retyping it is how it stops being done at all. */}
+              {canCreateInsight ? (
+                <Link
+                  href={`/app/insights?fromResult=${result.id}` as '/app'}
+                  className="w-fit text-label underline underline-offset-4"
+                >
+                  {tInsights('fromResult')}
+                </Link>
+              ) : null}
             </li>
           ))}
         </ul>

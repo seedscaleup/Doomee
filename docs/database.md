@@ -541,13 +541,35 @@ une requête. `currency` fait partie de la clé : deux devises ne tombent jamais
 ### `insights`
 `id` · `organization_id` · `project_id` NULL · `client_id` NULL ·
 `title` · `what_worked text` · `what_didnt text` · `what_we_learned text` · `recommendation text` ·
-`period_start` `period_end` · `is_client_visible` · `created_by` · `created_at`
+`period_start` `period_end` · `is_client_visible DEFAULT false` · `created_by` · `updated_by` ·
+`created_at` · `updated_at` · `deleted_at`
+
+> Les quatre questions d'une réunion de bilan, dans l'ordre où elles se posent. Du **texte**, pas
+> de la structure : un insight est écrit par un humain pour un humain, et un formulaire qui
+> exigerait de la structure récolterait « n/a » quatre fois.
+>
+> ⚠️ **`what_didnt` n'est dans aucune vue `portal.*`** (ADR-065). Le client voit `what_worked`,
+> `what_we_learned` et `recommendation`.
+>
+> Un insight sans projet **ni** client est une leçon sur la pratique de l'agence elle-même —
+> légitime, et lisible de quiconque peut lire les insights.
 
 ### `insight_results` *(n↔n)* — les résultats qui fondent l'insight
-`organization_id` · `insight_id` · `result_id` — **PK (insight_id, result_id)**
+`organization_id` · `insight_id` · `result_id` · `created_at` — **PK (insight_id, result_id)**
+
+> Ce qui sépare un insight d'un avis. « Le format carrousel marche mieux » est une opinion ;
+> la même phrase avec trois résultats attachés est un constat vérifiable.
 
 ### `insight_actions` *(n↔n)* — les actions nées de la recommandation
 `organization_id` · `insight_id` · `action_id` · `created_at` — **PK (insight_id, action_id)**
+
+### `actions.source_insight_id` — l'autre moitié du lien
+FK **composite** `(organization_id, source_insight_id) → insights`, **`ON DELETE SET NULL`** :
+supprimer un insight ne supprime pas les actions qu'il a fait naître. Le travail a été fait ;
+c'est le raisonnement qu'on retire.
+
+Les deux existent à dessein : `insight_actions` répond à « qu'est-ce qui est sorti de cet
+insight ? », `source_insight_id` à « pourquoi cette action existe-t-elle ? » — sans jointure.
 
 > `actions.source_insight_id` porte la relation principale (la prochaine action) ;
 > `insight_actions` permet d'en rattacher plusieurs et de garder la traçabilité.

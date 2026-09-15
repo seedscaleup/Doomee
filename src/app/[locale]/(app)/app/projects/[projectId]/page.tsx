@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { can } from '@/lib/permissions'
 import { listActivity } from '@/modules/activity'
+import { firstGap, isClosed, loopPercent, readLoop, readProjectLoop } from '@/modules/insights'
 import { listMetrics, listObjectives, listObjectiveTypes } from '@/modules/objectives'
 import {
   getProject,
@@ -37,19 +38,49 @@ export default async function ProjectPage(props: {
    */
   const canManage = can(actor, 'project.update')
 
-  const [members, milestones, objectives, metrics, objectiveTypes, clients, colleagues, activity] =
-    await Promise.all([
-      listProjectMembers({ projectId }),
-      listMilestones({ projectId }),
-      listObjectives({ projectId }),
-      listMetrics(),
-      listObjectiveTypes(),
-      canManage ? listClientOptions() : [],
-      canManage ? listColleagueOptions() : [],
-      listActivity({ projectId, limit: 30 }),
-    ])
+  const [
+    members,
+    milestones,
+    objectives,
+    metrics,
+    objectiveTypes,
+    clients,
+    colleagues,
+    activity,
+    loopCounts,
+  ] = await Promise.all([
+    listProjectMembers({ projectId }),
+    listMilestones({ projectId }),
+    listObjectives({ projectId }),
+    listMetrics(),
+    listObjectiveTypes(),
+    canManage ? listClientOptions() : [],
+    canManage ? listColleagueOptions() : [],
+    listActivity({ projectId, limit: 30 }),
+    readProjectLoop({ projectId }),
+  ])
 
   const t = await getTranslations('projects')
+  const tLoop = await getTranslations('insights.loop')
+
+  /**
+   * The loop, read by the pure service and labelled here. The service decides
+   * which step is blocked; this only puts words on it.
+   */
+  const stages = readLoop(loopCounts).map((stage) => ({
+    key: stage.step,
+    label: tLoop(`step.${stage.step}`),
+    count: stage.count,
+    reached: stage.reached,
+    blocked: stage.blocked,
+  }))
+
+  const gap = firstGap(loopCounts)
+  const caption = isClosed(loopCounts)
+    ? tLoop('closed')
+    : gap
+      ? tLoop('blocked', { step: tLoop(`step.${gap}`) })
+      : tLoop('percent', { percent: loopPercent(loopCounts) })
 
   return (
     <ProjectDetailScreen
@@ -63,6 +94,7 @@ export default async function ProjectPage(props: {
       clients={clients}
       colleagues={colleagues}
       canManage={canManage}
+      loop={{ stages, caption }}
       activity={activity.map((entry) => ({
         ...entry,
         createdAt: entry.createdAt.toISOString(),

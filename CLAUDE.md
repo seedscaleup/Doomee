@@ -29,10 +29,10 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | **LOT 9 terminé et vérifié** — `pnpm verify` vert. CHECKPOINT 1 (LOT 0 → 5) validé le 2026-09-15 |
+| **Phase actuelle** | **LOT 10 terminé et vérifié** — `pnpm verify` vert. **CHECKPOINT 2 (LOT 6 → 10) prêt pour validation** |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | **Le portail client 🔒** : 19 tables exposées derrière trois barrières — droits **par colonne**, politiques RLS, vues `portal.*` (ADR-026, ADR-061) ; quatre portes d'écriture figées par un test (ADR-064) ; le client valide ses livrables depuis le portail et nulle part ailleurs. Une **vraie faille** trouvée par la suite de fuite et corrigée (ADR-062) |
-| **Prochaine étape** | **LOT 10 — insights ⭐**. **O9 tranché par défaut** (ADR-063), réversible, à confirmer |
+| **Dernier jalon** | **La boucle est parcourable** : `insights` · `insight_results` · `insight_actions`, un résultat devient un insight pré-rempli, une recommandation devient la prochaine action en un clic (ADR-066), et la fiche projet dit **où la boucle s'arrête** (ADR-067). `tests/e2e/loop.spec.ts` parcourt les six étapes |
+| **Prochaine étape** | **LOT 11 — Project Health, risques, alertes**, après validation du CHECKPOINT 2 |
 | **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md` |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
@@ -278,6 +278,8 @@ pnpm verify           # tout, dans l'ordre de la CI
 | ❌ Un scan `axe` sans vérifier quelle page est rendue | → il passe sur un 404 ; assertion du titre exact d'abord |
 | ❌ Une page `dev` gardée par `NODE_ENV` seul | → elle est pré-rendue au build ; utiliser `devPagesEnabled()` + `force-dynamic` |
 | ❌ Une entrée de menu vers une route inexistante | → `planned: true` dans `NAV_ENTRIES`, retiré par le lot qui la crée |
+| ❌ `.partial()` sur un schéma Zod portant un `.refine()` | → refusé à l'**exécution** : le typecheck passe et le `next build` casse. Séparer l'objet du raffinement (ADR-067) |
+| ❌ Marquer en jaune toutes les étapes franchies | → le jaune désigne **ce qu'il faut faire ensuite**. Six pastilles jaunes ne désignent rien (ADR-067) |
 | ❌ Croire qu'une politique RLS dispense d'un `GRANT` | → une politique dit *quelles lignes*, un grant dit *si l'on peut demander*. `security_invoker` exige les deux (ADR-061) |
 | ❌ `EXISTS (SELECT … FROM autre_table)` dans une politique | → c'est une requête ordinaire, exécutée avec les droits de l'appelant : elle force à élargir les grants. Une fonction `SECURITY DEFINER` qui renvoie un booléen (ADR-061) |
 | ❌ Prendre `is_client_visible` pour une portée client | → il dit « peut être montré à un client », pas « à **ce** client ». Un fichier partagé fuitait chez le voisin (ADR-062) |
