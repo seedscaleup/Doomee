@@ -17,7 +17,8 @@
     "all": "Tous",
     "close": "Fermer",
     "delete": "Supprimer",
-    "confirm": "Confirmer"
+    "confirm": "Confirmer",
+    "none": "Aucun"
   },
   "errors": {
     "unauthenticated": "Vous devez être connecté pour continuer.",
@@ -39,7 +40,8 @@
     "has_active_projects": "Ce client a encore des projets actifs.",
     "upload_empty": "Ce fichier est vide.",
     "upload_too_large": "Ce fichier dépasse 2 Mo.",
-    "upload_unsupported_type": "Format non accepté : PNG, JPEG ou WebP uniquement."
+    "upload_unsupported_type": "Format non accepté : PNG, JPEG ou WebP uniquement.",
+    "project_owner_is_member": "Changez d'abord le responsable du projet."
   },
   "notFound": {
     "title": "Page introuvable",
@@ -310,6 +312,11 @@
       "active": "Actif",
       "paused": "En pause",
       "archived": "Archivé"
+    },
+    "milestone": {
+      "upcoming": "À venir",
+      "reached": "Atteint",
+      "missed": "Manqué"
     }
   },
   "priority": {
@@ -409,6 +416,112 @@
       "contact_added": "{actor} a ajouté le contact {name}",
       "contact_invited": "{actor} a invité {name} au portail"
     },
-    "unknownActor": "Quelqu'un"
+    "unknownActor": "Quelqu'un",
+    "project": {
+      "created": "{actor} a créé le projet {name}",
+      "updated": "{actor} a modifié {name}",
+      "archived": "{actor} a archivé {name}",
+      "member_added": "{actor} a ajouté quelqu'un à l'équipe de {name}",
+      "member_removed": "{actor} a retiré quelqu'un de l'équipe de {name}",
+      "milestone_added": "{actor} a ajouté le jalon {name}",
+      "milestone_reached": "{actor} a atteint le jalon {name}",
+      "milestone_reopened": "{actor} a rouvert le jalon {name}",
+      "milestone_deleted": "{actor} a supprimé le jalon {name}"
+    }
+  },
+  "projects": {
+    "title": "Projets",
+    "description": "Ce sur quoi l'équipe travaille, et où ça en est.",
+    "new": "Nouveau projet",
+    "searchPlaceholder": "Rechercher un projet",
+    "statusFilter": "Statut",
+    "clientFilter": "Client",
+    "emptyTitle": "Aucun projet pour l'instant",
+    "emptyDescription": "Créez un projet pour y rattacher des actions, des livrables et des résultats.",
+    "noResultsTitle": "Aucun projet ne correspond",
+    "noResultsDescription": "Élargissez la recherche ou changez le filtre.",
+    "noClient": "Projet interne",
+    "columns": {
+      "name": "Projet",
+      "status": "Statut",
+      "client": "Client",
+      "owner": "Responsable",
+      "deadline": "Échéance",
+      "progress": "Avancement"
+    },
+    "tabs": {
+      "overview": "Informations",
+      "members": "Équipe",
+      "milestones": "Jalons",
+      "activity": "Historique"
+    },
+    "form": {
+      "createTitle": "Nouveau projet",
+      "editTitle": "Modifier le projet",
+      "name": "Nom du projet",
+      "code": "Code",
+      "client": "Client",
+      "description": "Description",
+      "status": "Statut",
+      "priority": "Priorité",
+      "startDate": "Début",
+      "endDate": "Échéance",
+      "owner": "Responsable",
+      "timezone": "Fuseau horaire",
+      "timezoneHint": "Sert à décider ce qui est en retard. Modifiable après création.",
+      "budgetAmount": "Budget",
+      "budgetCurrency": "Devise",
+      "budgetHint": "Un montant va toujours avec sa devise.",
+      "isClientVisible": "Visible par le client",
+      "isClientVisibleHint": "Le détail interne reste interne dans tous les cas.",
+      "failed": "Impossible d'enregistrer ce projet."
+    },
+    "progress": {
+      "label": "Avancement",
+      "value": "{percent} %",
+      "fromMilestones": "Calculé sur les jalons tant qu'il n'y a pas d'actions.",
+      "actions": "{done} action sur {total} terminée"
+    },
+    "deadline": {
+      "none": "Pas d'échéance",
+      "overdue": "En retard de {days} j",
+      "today": "Échéance aujourd'hui",
+      "remaining": "Dans {days} j"
+    },
+    "members": {
+      "title": "Équipe du projet",
+      "add": "Ajouter au projet",
+      "person": "Personne",
+      "role": "Rôle sur le projet",
+      "remove": "Retirer",
+      "emptyTitle": "Personne d'autre sur ce projet",
+      "emptyDescription": "Ajoutez les personnes qui y travaillent : elles y auront accès.",
+      "scopeHint": "Un collaborateur ne voit que les projets dont il est membre.",
+      "failed": "Impossible de modifier l'équipe."
+    },
+    "memberRole": {
+      "lead": "Pilote",
+      "member": "Membre",
+      "reviewer": "Relecteur"
+    },
+    "milestones": {
+      "title": "Jalons",
+      "add": "Ajouter un jalon",
+      "titleField": "Intitulé",
+      "dueDate": "Date",
+      "markReached": "Marquer atteint",
+      "markUpcoming": "Rouvrir",
+      "delete": "Supprimer",
+      "clientVisible": "Visible par le client",
+      "emptyTitle": "Aucun jalon",
+      "emptyDescription": "Un jalon donne un cap visible : la date à laquelle quelque chose doit exister.",
+      "failed": "Impossible d'enregistrer ce jalon."
+    },
+    "archive": {
+      "action": "Archiver",
+      "title": "Archiver ce projet ?",
+      "description": "Il quitte les listes actives. Ses données sont conservées.",
+      "confirm": "Archiver"
+    }
   }
 }

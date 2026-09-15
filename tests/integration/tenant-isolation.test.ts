@@ -103,6 +103,39 @@ const FIXTURES: Record<string, Fixture> = {
       return id
     },
   },
+  projects: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      await query(
+        'INSERT INTO projects (id, organization_id, name, code) VALUES ($1, $2, $3, $4)',
+        [id, organizationId, `Projet ${id}`, `P-${id}`],
+      )
+      return id
+    },
+  },
+  project_members: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const projectId = await FIXTURES.projects?.seed(query, organizationId)
+      const userId = await seedUser(query, `member-${id}@example.test`)
+      await query(
+        'INSERT INTO project_members (id, organization_id, project_id, user_id) VALUES ($1, $2, $3, $4)',
+        [id, organizationId, projectId, userId],
+      )
+      return id
+    },
+  },
+  milestones: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const projectId = await FIXTURES.projects?.seed(query, organizationId)
+      await query(
+        'INSERT INTO milestones (id, organization_id, project_id, title) VALUES ($1, $2, $3, $4)',
+        [id, organizationId, projectId, 'Jalon'],
+      )
+      return id
+    },
+  },
   files: {
     seed: async (query, organizationId) => {
       const id = newId()

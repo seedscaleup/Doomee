@@ -135,16 +135,20 @@ lien qui expire.
 
 ---
 
-## LOT 4 — Projets · *critères MVP 2, 6*
-1. Schéma `projects`, `project_members`, `milestones` + RLS + isolation.
-2. CRUD projet (client, dates, responsable, membres, priorité, budget, couleur, statut).
-3. **Portée collaborateur** : `project_members` filtre effectivement les lectures — testé.
-4. Liste des projets (cartes + tableau), filtres, tri par santé / échéance.
-5. Écran projet : en-tête, progression, compteurs, onglets.
-6. Jalons.
-7. Service `progress` (pur) + compteurs dénormalisés maintenus en transaction.
+## LOT 4 — Projets · *critères MVP 2, 6* — ✅ **terminé**
+1. ✅ Schéma `projects`, `project_members`, `milestones` + RLS + isolation générée.
+2. ✅ CRUD projet (client, dates, responsable, membres, priorité, budget + devise, statut, visibilité).
+3. ✅ **Portée collaborateur** : `scopedToActor` sur **toute** lecture de projet, 404 hors portée — testé en E2E *et* en intégration, et vérifié par mutation (ADR-038).
+4. ✅ Liste des projets : recherche insensible aux accents, filtre statut, tri par échéance la plus proche.
+5. ✅ Écran projet : en-tête (avancement, statut, priorité, échéance dans le fuseau du projet), onglets.
+6. ✅ Jalons, statut dérivé dans le fuseau du projet (ADR-039).
+7. ✅ Service `progress` pur + `progress_percent` réécrit dans la transaction appelante (ADR-013).
 
-✅ **Sortie** : E2E « créer un projet, y ajouter des membres, voir sa progression ».
+✅ **Sortie** : E2E « créer un projet, y ajouter des membres, voir sa progression » ✅ FR + EN, plus la
+frontière collaborateur.
+
+> La couleur du projet et le tri par santé attendent leur lot : `health_score` est calculé au LOT 7.
+> Les compteurs d'actions restent à zéro jusqu'au LOT 5.
 
 ---
 

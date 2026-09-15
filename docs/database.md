@@ -76,6 +76,8 @@ CREATE TYPE client_status    AS ENUM ('prospect','active','paused','archived');
 CREATE TYPE project_status   AS ENUM ('to_start','in_progress','in_review','paused','blocked','done','archived');
 CREATE TYPE priority_level   AS ENUM ('low','normal','high','urgent');
 CREATE TYPE health_status    AS ENUM ('healthy','at_risk','blocked');
+CREATE TYPE milestone_status AS ENUM ('upcoming','reached','missed');
+CREATE TYPE project_member_role AS ENUM ('lead','member','reviewer');
 
 CREATE TYPE action_status    AS ENUM ('todo','in_progress','in_review','done','blocked','cancelled');
 
@@ -290,7 +292,7 @@ Les métriques calculées sont dérivées **à la lecture** par le service `metr
 | `priority` | priority_level NOT NULL DEFAULT `'normal'` | |
 | `color` | text | identité visuelle |
 | `start_date` `end_date` | date | |
-| `timezone` | text NOT NULL | hérité de l'organisation, sert au calcul « en retard » |
+| `timezone` | text NOT NULL | **attribut du projet** (ADR-039), renseigné à la création, sert au calcul « en retard » |
 | `owner_user_id` | uuid | responsable |
 | `budget_amount` | numeric(18,2) NULL | |
 | `budget_currency` | char(3) NULL | |
@@ -308,14 +310,33 @@ Les métriques calculées sont dérivées **à la lecture** par le service `metr
 
 > Les compteurs sont dénormalisés **volontairement** : les listes de projets et les dashboards en dépendent.
 > Ils sont recalculés dans la même transaction que la mutation qui les affecte, et réconciliés par un job nocturne.
+> `progress_percent` est écrit par `refreshProjectProgress`, à l'intérieur de la transaction appelante —
+> vérifié par un test qui provoque un rollback et constate que le compteur et les lignes reviennent ensemble.
+> Les compteurs d'actions restent à zéro jusqu'au LOT 5 ; l'arithmétique qui les combine vit déjà dans le
+> service pur, donc ce lot ajoutera des lignes, pas des règles.
 
 ### `project_members`
-`id` · `organization_id` · `project_id` · `user_id` · `project_role text` *(`lead` / `member` / `reviewer`)* · `added_at`
-**UNIQUE (organization_id, project_id, user_id)** — **la table qui définit la portée d'un collaborateur.**
+`id` · `organization_id` · `project_id` · `user_id` · `role project_member_role` *(`lead` / `member` / `reviewer`)* ·
+`added_by` · `added_at`
+**FK composite (organization_id, project_id)** · **UNIQUE (organization_id, project_id, user_id)**
+
+> **La table qui définit la portée d'un collaborateur** (ADR-038). Le rôle sur un projet est un
+> **enum** et non du texte libre : c'est un ensemble fixé dans le code, comme `org_role`.
+> Ce qu'on fait **sur** un projet n'est pas ce qu'on a le droit de faire **dans** l'organisation —
+> un manager peut être simple membre d'un projet qu'il ne pilote pas.
+>
+> Le responsable d'un projet y est inscrit d'office à la création : rendre ça implicite, c'est
+> obtenir un pilote qui ne peut plus ouvrir son propre projet le jour où il cesse d'être manager.
 
 ### `milestones` *(jalons)*
 `id` · `organization_id` · `project_id` · `title` · `description` · `due_date date` ·
-`status` (`upcoming`/`reached`/`missed`) · `is_client_visible` · `reached_at`
+`status milestone_status` · `is_client_visible` *(défaut `false`)* · `reached_at` · `created_by` ·
+`created_at` `updated_at` `deleted_at`
+**FK composite (organization_id, project_id)**
+
+> Le statut affiché est **dérivé** (ADR-039) : `reached` est un fait enregistré, `missed` est le verdict
+> de l'horloge dans le fuseau du projet. La colonne existe pour les requêtes et les rapports ;
+> l'écran, lui, ne dépend pas d'un job nocturne pour dire la vérité.
 
 ---
 

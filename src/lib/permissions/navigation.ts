@@ -44,13 +44,7 @@ export type NavEntry = {
 export const NAV_ENTRIES: readonly NavEntry[] = [
   { key: 'home', href: '/app', primary: true },
   { key: 'myWork', href: '/app/my-work', permission: 'action.read', primary: true, planned: true },
-  {
-    key: 'projects',
-    href: '/app/projects',
-    permission: 'project.read',
-    primary: true,
-    planned: true,
-  },
+  { key: 'projects', href: '/app/projects', permission: 'project.read', primary: true },
   { key: 'clients', href: '/app/clients', permission: 'client.create' },
   { key: 'results', href: '/app/results', permission: 'result.read', planned: true },
   { key: 'insights', href: '/app/insights', permission: 'insight.read', planned: true },

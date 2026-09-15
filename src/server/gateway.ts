@@ -43,11 +43,20 @@ export type AuditEntry = {
   after?: unknown
 }
 
-type Definition<TInput, TOutput> = {
+/**
+ * `TRaw` is what a CALLER passes; `TParsed` is what the handler receives.
+ *
+ * They differ whenever the schema does work — `.default()`, `.transform()`,
+ * `z.coerce`. Collapsing them into one type looks tidier and is wrong in a way
+ * that shows up at the call site: a schema with `includeArchived: z.boolean()
+ * .default(false)` would force every caller to pass the very field the default
+ * exists to fill.
+ */
+type Definition<TRaw, TParsed, TOutput> = {
   /** Zod schema for the input, or undefined for a no-argument call. */
-  input?: z.ZodType<TInput>
+  input?: z.ZodType<TParsed, TRaw>
   permission: Permission
-  handler: (input: TInput, context: HandlerContext) => Promise<TOutput>
+  handler: (input: TParsed, context: HandlerContext) => Promise<TOutput>
 }
 
 function auditWriter(db: TenantDb, actor: Actor) {
@@ -77,8 +86,11 @@ async function authorize(permission: Permission): Promise<Actor> {
   return actor
 }
 
-function parseInput<TInput>(definition: Definition<TInput, unknown>, raw: unknown): TInput {
-  if (!definition.input) return raw as TInput
+function parseInput<TRaw, TParsed>(
+  definition: Definition<TRaw, TParsed, unknown>,
+  raw: unknown,
+): TParsed {
+  if (!definition.input) return raw as TParsed
 
   const parsed = definition.input.safeParse(raw)
   if (!parsed.success) {
@@ -90,8 +102,10 @@ function parseInput<TInput>(definition: Definition<TInput, unknown>, raw: unknow
 }
 
 /** Reads. No audit entry: reading is not an event, and logging every read would drown the log. */
-export function defineQuery<TInput, TOutput>(definition: Definition<TInput, TOutput>) {
-  return async (raw?: TInput): Promise<TOutput> => {
+export function defineQuery<TRaw, TParsed, TOutput>(
+  definition: Definition<TRaw, TParsed, TOutput>,
+) {
+  return async (raw?: TRaw): Promise<TOutput> => {
     const actor = await authorize(definition.permission)
     const input = parseInput(definition, raw)
 
@@ -102,8 +116,10 @@ export function defineQuery<TInput, TOutput>(definition: Definition<TInput, TOut
 }
 
 /** Writes. Runs in a transaction, with the audit entry committed alongside. */
-export function defineAction<TInput, TOutput>(definition: Definition<TInput, TOutput>) {
-  return async (raw?: TInput): Promise<TOutput> => {
+export function defineAction<TRaw, TParsed, TOutput>(
+  definition: Definition<TRaw, TParsed, TOutput>,
+) {
+  return async (raw?: TRaw): Promise<TOutput> => {
     const actor = await authorize(definition.permission)
     const input = parseInput(definition, raw)
 

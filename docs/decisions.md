@@ -43,6 +43,9 @@
 | [ADR-035](#adr-035) | Une invitation de contact client porte le compte qu'elle ouvre | **Acceptée** |
 | [ADR-036](#adr-036) | Schéma TypeScript et base migrée comparés par un test | **Acceptée** |
 | [ADR-037](#adr-037) | Port de stockage : filesystem et S3, mêmes tests | **Acceptée** |
+| [ADR-038](#adr-038) | Portée collaborateur : une clause, écrite une fois | **Acceptée** |
+| [ADR-039](#adr-039) | Le fuseau horaire appartient au projet | **Acceptée** |
+| [ADR-040](#adr-040) | La passerelle distingue entrée brute et entrée validée | **Acceptée** |
 
 ---
 
@@ -950,6 +953,97 @@ qui décide.
 - L'objet d'un ancien logo n'est pas supprimé au moment du remplacement : la
   ligne est déliée, la purge appartient à un job qu'on peut relancer, pas à la
   requête que l'utilisateur attend.
+
+---
+
+<a id="adr-038"></a>
+## ADR-038 — La portée d'un collaborateur est une clause, écrite une fois
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 4
+
+**Contexte.** `project.read` dit qu'un collaborateur peut lire des projets. Il ne
+dit pas **lesquels**, et cette question a une seule réponse : ceux dont il est
+membre (`project_members`). Les rôles au-dessus — `owner`, `direction`,
+`manager` — portent `project.read_all` et voient toute l'organisation.
+
+RLS répond « quel locataire », pas « quelles lignes à l'intérieur ». La portée
+collaborateur est donc la **deuxième barrière** (CLAUDE.md §6), et elle vit dans
+le code — au risque, si on la disperse, d'être appliquée sur la liste et oubliée
+sur la fiche.
+
+**Décision.** Une fonction, `scopedToActor(actor)`, dans
+`src/modules/projects/queries.ts`. Elle rend `undefined` pour un acteur
+privilégié — pas une condition toujours vraie, pour que le SQL généré ne porte
+pas un filtre qui ne filtre rien — et sinon un `EXISTS` sur `project_members`.
+**Toute** lecture d'un projet passe par elle : liste, fiche, équipe, jalons.
+
+Un projet hors portée répond **404**, jamais 403 : confirmer qu'il existe
+ailleurs dans l'organisation serait déjà une divulgation.
+
+**Ce qui le prouve.** Deux tests, à deux niveaux, et les deux mordent :
+- `tests/e2e/projects.spec.ts` — un manager crée deux projets, n'ajoute le
+  collaborateur qu'à un seul ; celui-ci voit un projet dans la liste et reçoit
+  404 sur l'URL de l'autre. Vérifié par mutation : en neutralisant
+  `scopedToActor`, le test échoue.
+- `tests/integration/project-scope.test.ts` — la clause elle-même, contre de
+  vraies politiques, y compris le cas où une ligne `project_members` pointerait
+  vers un projet d'un autre locataire : la **FK composite** le refuse.
+
+**Corollaire découvert en vérifiant.** L'écran des projets chargeait d'emblée les
+options du formulaire — la liste des clients et celle des collègues. Or
+`member.read` n'appartient pas au collaborateur : la page échouait en 404 pour
+exactement les gens que la portée existe pour servir. Une page ne doit pas
+charger ce que son lecteur n'a pas le droit de lire. `can()` est donc appelé
+**avant** la lecture, pas après le refus, et ce qui est masqué l'est pour la même
+raison qu'il est refusé — jamais l'inverse (CLAUDE.md §6).
+
+---
+
+<a id="adr-039"></a>
+## ADR-039 — Le fuseau est un attribut du projet, pas du lecteur
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 4
+
+**Contexte.** « En retard » est une question sur un **jour calendaire**, et un
+jour calendaire n'existe que dans un fuseau (R9). Une échéance au 15 n'est pas
+manquée à 23 h le 14 à Abidjan parce qu'il est déjà le 15 à Paris.
+
+**Décision.** `projects.timezone`, `NOT NULL`, renseigné à la création depuis le
+fuseau du créateur et modifiable ensuite. Les comparaisons passent par des
+fonctions **pures** — `calendarDate`, `isOverdue`, `daysUntil`,
+`milestoneStatusFor` — qui prennent le fuseau et l'instant en arguments.
+
+La conversion utilise `Intl`, jamais un décalage calculé à la main : le
+changement d'heure casse silencieusement les offsets deux fois par an, et un
+test le vérifie sur la bascule française du 29 mars 2026.
+
+**Conséquences.** Le statut d'un jalon est **dérivé**, pas stocké pour
+l'affichage : `reached` est un fait que quelqu'un a enregistré et que l'horloge
+ne défait pas ; `missed` est le verdict de l'horloge dans le fuseau du projet.
+Une liste n'est donc jamais périmée entre deux passages d'un job nocturne.
+
+---
+
+<a id="adr-040"></a>
+## ADR-040 — `defineQuery` distingue ce qu'on passe de ce que le handler reçoit
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 4
+
+**Contexte.** La passerelle était typée sur un seul paramètre : l'entrée de
+l'appelant et l'entrée du handler étaient le **même** type. C'est faux dès que le
+schéma fait un travail — `.default()`, `.transform()`, `z.coerce`. Concrètement,
+`listProjects({})` ne compilait pas : le schéma a un
+`includeArchived: z.boolean().default(false)`, et l'appelant se voyait réclamer
+le champ même que le défaut existe pour remplir.
+
+**Décision.** `Definition<TRaw, TParsed, TOutput>` avec `input?: z.ZodType<TParsed, TRaw>`.
+L'appelant passe `TRaw`, le handler reçoit `TParsed`.
+
+**Conséquences.** Changement de types seulement, aucun changement de
+comportement — et la rigueur est intacte : vérifié par `@ts-expect-error` qu'un
+statut hors énumération et un champ inconnu sont toujours refusés. Les valeurs
+par défaut d'un schéma redeviennent utilisables, ce qui évite la vraie tentation :
+les recopier à chaque appel, jusqu'à ce que deux appels ne soient plus d'accord.
 
 ---
 

@@ -17,7 +17,8 @@
     "all": "All",
     "close": "Close",
     "delete": "Delete",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "none": "None"
   },
   "errors": {
     "unauthenticated": "You need to sign in to continue.",
@@ -39,7 +40,8 @@
     "has_active_projects": "This client still has active projects.",
     "upload_empty": "This file is empty.",
     "upload_too_large": "This file is larger than 2 MB.",
-    "upload_unsupported_type": "Unsupported format: PNG, JPEG or WebP only."
+    "upload_unsupported_type": "Unsupported format: PNG, JPEG or WebP only.",
+    "project_owner_is_member": "Change the project owner first."
   },
   "notFound": {
     "title": "Page not found",
@@ -310,6 +312,11 @@
       "active": "Active",
       "paused": "Paused",
       "archived": "Archived"
+    },
+    "milestone": {
+      "upcoming": "Upcoming",
+      "reached": "Reached",
+      "missed": "Missed"
     }
   },
   "priority": {
@@ -409,6 +416,112 @@
       "contact_added": "{actor} added the contact {name}",
       "contact_invited": "{actor} invited {name} to the portal"
     },
-    "unknownActor": "Someone"
+    "unknownActor": "Someone",
+    "project": {
+      "created": "{actor} created the project {name}",
+      "updated": "{actor} updated {name}",
+      "archived": "{actor} archived {name}",
+      "member_added": "{actor} added someone to the {name} team",
+      "member_removed": "{actor} removed someone from the {name} team",
+      "milestone_added": "{actor} added the milestone {name}",
+      "milestone_reached": "{actor} reached the milestone {name}",
+      "milestone_reopened": "{actor} reopened the milestone {name}",
+      "milestone_deleted": "{actor} deleted the milestone {name}"
+    }
+  },
+  "projects": {
+    "title": "Projects",
+    "description": "What the team is working on, and where it stands.",
+    "new": "New project",
+    "searchPlaceholder": "Search for a project",
+    "statusFilter": "Status",
+    "clientFilter": "Client",
+    "emptyTitle": "No projects yet",
+    "emptyDescription": "Create a project to hang actions, deliverables and results on.",
+    "noResultsTitle": "No project matches",
+    "noResultsDescription": "Widen the search or change the filter.",
+    "noClient": "Internal project",
+    "columns": {
+      "name": "Project",
+      "status": "Status",
+      "client": "Client",
+      "owner": "Owner",
+      "deadline": "Due",
+      "progress": "Progress"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "members": "Team",
+      "milestones": "Milestones",
+      "activity": "History"
+    },
+    "form": {
+      "createTitle": "New project",
+      "editTitle": "Edit project",
+      "name": "Project name",
+      "code": "Code",
+      "client": "Client",
+      "description": "Description",
+      "status": "Status",
+      "priority": "Priority",
+      "startDate": "Start",
+      "endDate": "Due",
+      "owner": "Owner",
+      "timezone": "Time zone",
+      "timezoneHint": "Decides what counts as late. Changeable after creation.",
+      "budgetAmount": "Budget",
+      "budgetCurrency": "Currency",
+      "budgetHint": "An amount always travels with its currency.",
+      "isClientVisible": "Visible to the client",
+      "isClientVisibleHint": "Internal detail stays internal either way.",
+      "failed": "Could not save this project."
+    },
+    "progress": {
+      "label": "Progress",
+      "value": "{percent}%",
+      "fromMilestones": "Based on milestones until there are actions.",
+      "actions": "{done} of {total} actions done"
+    },
+    "deadline": {
+      "none": "No due date",
+      "overdue": "{days} days late",
+      "today": "Due today",
+      "remaining": "In {days} days"
+    },
+    "members": {
+      "title": "Project team",
+      "add": "Add to project",
+      "person": "Person",
+      "role": "Role on the project",
+      "remove": "Remove",
+      "emptyTitle": "Nobody else on this project",
+      "emptyDescription": "Add the people working on it: they will get access.",
+      "scopeHint": "A collaborator only sees the projects they are a member of.",
+      "failed": "Could not change the team."
+    },
+    "memberRole": {
+      "lead": "Lead",
+      "member": "Member",
+      "reviewer": "Reviewer"
+    },
+    "milestones": {
+      "title": "Milestones",
+      "add": "Add a milestone",
+      "titleField": "Title",
+      "dueDate": "Date",
+      "markReached": "Mark reached",
+      "markUpcoming": "Reopen",
+      "delete": "Delete",
+      "clientVisible": "Visible to the client",
+      "emptyTitle": "No milestones",
+      "emptyDescription": "A milestone sets a visible marker: the date something has to exist by.",
+      "failed": "Could not save this milestone."
+    },
+    "archive": {
+      "action": "Archive",
+      "title": "Archive this project?",
+      "description": "It leaves the active lists. Its data is kept.",
+      "confirm": "Archive"
+    }
   }
 }
