@@ -24,4 +24,9 @@ export const IDENTITY_TABLES = ['sessions', 'accounts', 'verifications', 'rate_l
  * organisation-owned rows are still private, and tenant-isolation.test.ts
  * asserts both halves separately.
  */
-export const SHARED_TAXONOMY_TABLES = new Set(['industries'])
+export const SHARED_TAXONOMY_TABLES = new Set([
+  'industries',
+  'action_types',
+  'action_categories',
+  'channels',
+])

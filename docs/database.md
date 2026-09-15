@@ -212,6 +212,10 @@ users (1 personne, 1 e-mail)
 
 Tables concernées : `action_types`, `action_categories`, `channels`, `deliverable_types`, `objective_types`.
 
+> Livrées au LOT 5 pour les trois premières, avec leur seed système (12 types d'action, 7 catégories,
+> 15 canaux) et la même politique RLS que `industries` : une ligne système est à tout le monde en
+> lecture et à personne en écriture ; les lignes d'une organisation lui appartiennent entièrement.
+
 ### `metrics` — catalogue de métriques
 Forme commune, plus :
 `unit text` · `kind metric_kind` · `aggregation metric_agg` · `direction metric_direction` ·
@@ -391,12 +395,29 @@ La direction (`higher_is_better` / `lower_is_better`) décide si un écart est b
 | `objective_id` | uuid NULL | rattachement direct optionnel à un objectif |
 | `source_insight_id` | uuid NULL | **← « prochaine action » issue d'un insight : la boucle se referme ici** |
 | `position` | int | ordre manuel (kanban) |
+| `created_by` `updated_by` · `created_at` `updated_at` `deleted_at` | | |
 
-**FK composites** sur `project_id`, `objective_id`, `source_insight_id`, `assignee_id`.
-Index : `(organization_id, project_id, status)`, `(organization_id, assignee_id, due_date)`, `(organization_id, due_date) WHERE status NOT IN ('done','cancelled')`.
+**FK composite** sur `project_id` · **UNIQUE (organization_id, id)** — cible des FK composites
+(`action_collaborators`, et plus tard `results`, `deliverables`).
+Index : `(organization_id, project_id, status)`, `(organization_id, assignee_id, due_date)`,
+`(organization_id, due_date)`.
+
+> `objective_id` et `source_insight_id` arrivent avec leurs tables (LOT 6 et LOT 10) :
+> une FK composite ne peut pas pointer vers une table qui n'existe pas encore.
+>
+> `completed_at` est **dérivé du statut**, jamais saisi : deux endroits pour dire « c'est fini »,
+> c'est un endroit où ils peuvent se contredire. `due_at` est reporté — la date calendaire plus le
+> fuseau du projet suffisent à répondre « en retard ? » (ADR-039), et une colonne dérivée qu'aucun
+> écran ne lit est une colonne qui dérive.
 
 ### `action_collaborators`
-`id` · `organization_id` · `action_id` · `user_id` — **UNIQUE (organization_id, action_id, user_id)**
+`id` · `organization_id` · `action_id` · `user_id` · `added_at`
+**FK composite (organization_id, action_id)** · **UNIQUE (organization_id, action_id, user_id)**
+
+> Distinct de `assignee_id` volontairement : **une** personne répond d'une action.
+> « Tout le monde est responsable » est la façon dont personne ne l'est. Les collaborateurs sont
+> listés, comptés et notifiés ; ils ne sont pas comptables du résultat. Ils comptent en revanche
+> pour `action.update_own` (ADR-043).
 
 ### `deliverables`
 `id` · `organization_id` · `project_id` · `action_id` NULL · `title` · `description` ·
@@ -524,7 +545,11 @@ Pondérations dans `organizations.settings.health.weights`, valeurs par défaut 
 > que par un geste explicite. C'est la garantie « le client ne voit jamais les notes internes ».
 
 ### `comment_mentions`
-`organization_id` · `comment_id` · `user_id` — PK (comment_id, user_id) → déclenche une notification.
+`organization_id` · `comment_id` · `user_id` — PK (comment_id, user_id) → déclenche une notification (LOT 14).
+**FK composite (organization_id, comment_id)**
+
+> Table de jointure pure : pas de colonne `id`. La suite d'isolation le sait — sa fixture déclare
+> `idColumn`, plutôt que d'imposer à la table une clé de substitution dont elle n'a pas besoin.
 
 ### `files`
 `id` · `organization_id` · `storage_key text UNIQUE` *(opaque, préfixée par le locataire)* ·
@@ -537,8 +562,13 @@ Pondérations dans `organizations.settings.health.weights`, valeurs par défaut 
 > annoncé par l'extension ou l'en-tête. La clé de stockage ne quitte jamais le serveur.
 
 ### `attachments`
-`id` · `organization_id` · `file_id` · `entity_type` · `entity_id` · `project_id` NULL · `created_by`
-**UNIQUE (organization_id, file_id, entity_type, entity_id)**
+`id` · `organization_id` · `file_id` · `entity_type` · `entity_id` · `project_id` NULL · `created_by` · `created_at`
+**FK composite (organization_id, file_id)** · **UNIQUE (organization_id, file_id, entity_type, entity_id)**
+
+> `files` porte les octets et la frontière de permission ; `attachments` dit à quoi le fichier est
+> accroché. Les séparer permet de référencer deux fois le même objet sans le stocker deux fois.
+> Types acceptés au MVP : PNG, JPEG, WebP, PDF — décidés en **lisant les octets** (ADR-037),
+> jamais SVG.
 
 ---
 

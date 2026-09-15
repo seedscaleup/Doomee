@@ -51,7 +51,16 @@ export function SheetForm({
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         {error ? <Alert tone="error">{error}</Alert> : null}
         {children}
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        {/*
+          Pinned to the bottom of the sheet.
+
+          A long form — the action sheet has nineteen fields — put its Save
+          button fifteen hundred pixels down on a phone, which is a scroll
+          nobody should have to do to finish what they started (rule 9). It
+          bleeds past the sheet's padding so the content scrolls behind it
+          rather than beside it.
+        */}
+        <div className="sticky bottom-0 -mx-5 -mb-5 flex flex-col-reverse gap-2 border-t border-border bg-surface px-5 pb-5 pt-3 sm:flex-row sm:justify-end">
           <Button variant="secondary" type="button" onClick={onCancel} disabled={pending}>
             {cancelLabel}
           </Button>

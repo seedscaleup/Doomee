@@ -152,17 +152,21 @@ frontière collaborateur.
 
 ---
 
-## LOT 5 — Actions & My Work · *critères MVP 4, 5, 6*
-1. Schéma `actions`, `action_collaborators` + taxonomies `action_types` / `categories` / `channels` + seed.
-2. CRUD action, **création rapide** (titre + responsable + deadline, le reste en valeurs par défaut intelligentes).
-3. Vues : liste, **kanban** par statut, groupement par responsable / priorité.
-4. **My Work** : mes actions, aujourd'hui / cette semaine / en retard.
-5. **Focus Mode** : les 3 à 5 actions prioritaires, une par écran.
-6. Commentaires (`comments`, visibilité interne par défaut) + mentions + pièces jointes.
-7. Service `overdue` (pur, testé sur plusieurs fuseaux — R9).
-8. Transitions d'état validées côté service.
+## LOT 5 — Actions & My Work · *critères MVP 4, 5, 6* — ✅ **terminé**
+1. ✅ Schéma `actions`, `action_collaborators`, `comments`, `comment_mentions`, `attachments` + taxonomies `action_types` / `action_categories` / `channels` + seed système, RLS et isolation générée.
+2. ✅ CRUD action et **création rapide** : deux champs, le reste en valeurs par défaut intelligentes.
+3. ✅ Vues : liste et **kanban** par statut, chacune triée par la même notion d'urgence (ADR-042).
+4. ✅ **My Work** : en retard / aujourd'hui / cette semaine / plus tard, dans le fuseau de **chaque** projet.
+5. ✅ **Focus Mode** : cinq actions au maximum, une par écran, fermé en dessous de trois.
+6. ✅ Commentaires **internes par défaut** + mentions + pièces jointes (PNG/JPEG/WebP/PDF, lien signé).
+7. ✅ Retard : service pur, testé sur plusieurs fuseaux et sur une bascule d'heure (R9).
+8. ✅ Transitions validées côté service, y compris « bloqué exige une raison » (ADR-041).
 
-✅ **Sortie** : E2E « créer, assigner, suivre l'avancement d'une action » + parcours mobile collaborateur.
+✅ **Sortie** : E2E « créer, assigner, suivre l'avancement d'une action » ✅ FR + EN, parcours
+collaborateur **sur mobile 375 px**, et la progression du projet qui suit les actions terminées.
+
+> Le calendrier (vue mois) reste à faire : il partage la donnée avec les jalons et arrivera avec eux.
+> Le glisser-déposer du kanban attend que l'ordre dans une colonne soit stocké (`position`).
 
 ---
 

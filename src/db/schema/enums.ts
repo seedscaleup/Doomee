@@ -27,6 +27,15 @@ export const subscriptionStatus = pgEnum('subscription_status', [
 
 export const clientStatus = pgEnum('client_status', ['prospect', 'active', 'paused', 'archived'])
 
+export const actionStatus = pgEnum('action_status', [
+  'todo',
+  'in_progress',
+  'in_review',
+  'done',
+  'blocked',
+  'cancelled',
+])
+
 export const projectStatus = pgEnum('project_status', [
   'to_start',
   'in_progress',

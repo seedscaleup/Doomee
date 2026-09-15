@@ -1,8 +1,15 @@
+import { calendarDate, daysUntil, isOverdue } from '@/lib/dates'
+
 /**
  * Pure project logic. No database, no request context, no clock of its own:
  * every input is an argument, which is what makes the timezone rules below
  * testable at all (CLAUDE.md §5).
+ *
+ * The calendar arithmetic itself lives in `src/lib/dates`: two modules need it,
+ * and "what day is it in Abidjan" is not project knowledge. It is re-exported
+ * here so a project screen keeps one import.
  */
+export { calendarDate, daysUntil, isOverdue }
 
 export type ProjectStatusValue =
   | 'to_start'
@@ -64,53 +71,6 @@ export function priorityTone(
   if (priority === 'high') return 'warning'
   if (priority === 'low') return 'neutral'
   return 'progress'
-}
-
-/**
- * The calendar date in a given timezone — 'YYYY-MM-DD'.
- *
- * "Late" is a question about a calendar DAY. A deadline of the 15th is not
- * missed at 23:00 on the 14th in Abidjan just because it is already the 15th in
- * Paris (R9). Intl does the conversion; doing it by hand with offsets is how
- * daylight saving quietly breaks a report twice a year.
- */
-export function calendarDate(now: Date, timezone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now)
-
-  const value = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? ''
-
-  return `${value('year')}-${value('month')}-${value('day')}`
-}
-
-/** A due date is late once the project's own day has moved past it. */
-export function isOverdue(
-  dueDate: string | null | undefined,
-  timezone: string,
-  now: Date,
-): boolean {
-  if (!dueDate) return false
-  return dueDate < calendarDate(now, timezone)
-}
-
-/** Days remaining, counted in the project's timezone. Negative once late. */
-export function daysUntil(
-  dueDate: string | null | undefined,
-  timezone: string,
-  now: Date,
-): number | null {
-  if (!dueDate) return null
-
-  const today = Date.parse(`${calendarDate(now, timezone)}T00:00:00Z`)
-  const due = Date.parse(`${dueDate}T00:00:00Z`)
-  if (Number.isNaN(due)) return null
-
-  return Math.round((due - today) / 86_400_000)
 }
 
 /**

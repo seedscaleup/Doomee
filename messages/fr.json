@@ -41,7 +41,8 @@
     "upload_empty": "Ce fichier est vide.",
     "upload_too_large": "Ce fichier dépasse 2 Mo.",
     "upload_unsupported_type": "Format non accepté : PNG, JPEG ou WebP uniquement.",
-    "project_owner_is_member": "Changez d'abord le responsable du projet."
+    "project_owner_is_member": "Changez d'abord le responsable du projet.",
+    "blocked_reason_required": "Indiquez pourquoi cette action est bloquée."
   },
   "notFound": {
     "title": "Page introuvable",
@@ -168,6 +169,7 @@
     "home": "Accueil",
     "myWork": "Mon travail",
     "projects": "Projets",
+    "actions": "Actions",
     "results": "Résultats",
     "insights": "Insights",
     "reports": "Rapports",
@@ -427,6 +429,17 @@
       "milestone_reached": "{actor} a atteint le jalon {name}",
       "milestone_reopened": "{actor} a rouvert le jalon {name}",
       "milestone_deleted": "{actor} a supprimé le jalon {name}"
+    },
+    "action": {
+      "created": "{actor} a créé l'action {name}",
+      "updated": "{actor} a modifié {name}",
+      "completed": "{actor} a terminé {name}",
+      "blocked": "{actor} a bloqué {name}",
+      "cancelled": "{actor} a annulé {name}",
+      "status_changed": "{actor} a changé le statut de {name}",
+      "deleted": "{actor} a supprimé {name}",
+      "commented": "{actor} a commenté {name}",
+      "collaborators_changed": "{actor} a modifié les collaborateurs de {name}"
     }
   },
   "projects": {
@@ -522,6 +535,135 @@
       "title": "Archiver ce projet ?",
       "description": "Il quitte les listes actives. Ses données sont conservées.",
       "confirm": "Archiver"
+    }
+  },
+  "actions": {
+    "title": "Actions",
+    "description": "Ce qui est en cours, ce qui bloque, ce qui arrive.",
+    "new": "Nouvelle action",
+    "quickCreate": {
+      "title": "Nouvelle action",
+      "titleField": "Que faut-il faire ?",
+      "placeholder": "Ex. Publier le carrousel de lancement",
+      "project": "Projet",
+      "assignee": "Responsable",
+      "dueDate": "Échéance",
+      "priority": "Priorité",
+      "submit": "Créer",
+      "hint": "Le reste peut attendre : vous compléterez sur la fiche.",
+      "failed": "Impossible de créer cette action."
+    },
+    "searchPlaceholder": "Rechercher une action",
+    "statusFilter": "Statut",
+    "projectFilter": "Projet",
+    "viewFilter": "Vue",
+    "views": {
+      "list": "Liste",
+      "board": "Kanban"
+    },
+    "showClosed": "Afficher les actions terminées",
+    "emptyTitle": "Aucune action pour l'instant",
+    "emptyDescription": "Créez la première action d'un projet : c'est le deuxième pas de la boucle.",
+    "noResultsTitle": "Aucune action ne correspond",
+    "noResultsDescription": "Élargissez la recherche ou changez le filtre.",
+    "noProject": "Sans projet",
+    "unassigned": "Non assignée",
+    "columns": {
+      "title": "Action",
+      "status": "Statut",
+      "project": "Projet",
+      "assignee": "Responsable",
+      "dueDate": "Échéance",
+      "priority": "Priorité"
+    },
+    "tabs": {
+      "overview": "Informations",
+      "comments": "Commentaires",
+      "attachments": "Pièces jointes",
+      "activity": "Historique"
+    },
+    "form": {
+      "editTitle": "Modifier l'action",
+      "title": "Intitulé",
+      "description": "Description",
+      "status": "Statut",
+      "priority": "Priorité",
+      "assignee": "Responsable",
+      "actionType": "Type d'action",
+      "category": "Catégorie",
+      "channel": "Canal",
+      "startDate": "Début",
+      "dueDate": "Échéance",
+      "estimatedMinutes": "Temps estimé (min)",
+      "spentMinutes": "Temps passé (min)",
+      "blockedReason": "Pourquoi est-ce bloqué ?",
+      "blockedReasonHint": "Une action bloquée sans raison est une action que personne ne débloque.",
+      "isClientVisible": "Visible par le client",
+      "collaborators": "Collaborateurs",
+      "collaboratorsHint": "Une seule personne est responsable ; les autres aident.",
+      "failed": "Impossible d'enregistrer cette action."
+    },
+    "timing": {
+      "overdue": "En retard",
+      "today": "Aujourd'hui",
+      "soon": "Cette semaine",
+      "later": "Plus tard",
+      "none": "Sans échéance"
+    },
+    "comments": {
+      "title": "Commentaires",
+      "placeholder": "Écrire un commentaire…",
+      "submit": "Commenter",
+      "mentions": "Mentionner",
+      "visibility": "Visibilité",
+      "internal": "Interne",
+      "shared": "Visible par le client",
+      "internalHint": "Interne par défaut. Le client ne voit un commentaire que si vous le partagez.",
+      "mentioned": "A mentionné : {names}",
+      "delete": "Supprimer",
+      "emptyTitle": "Aucun commentaire",
+      "emptyDescription": "Les échanges sur cette action apparaîtront ici.",
+      "failed": "Impossible d'enregistrer ce commentaire."
+    },
+    "attachments": {
+      "title": "Pièces jointes",
+      "add": "Joindre un fichier",
+      "hint": "PNG, JPEG, WebP ou PDF, 10 Mo maximum.",
+      "open": "Ouvrir",
+      "emptyTitle": "Aucune pièce jointe",
+      "emptyDescription": "Joignez une maquette, un brief, un export.",
+      "failed": "Impossible de joindre ce fichier."
+    },
+    "delete": {
+      "action": "Supprimer",
+      "title": "Supprimer cette action ?",
+      "description": "Elle disparaît des listes. Son historique est conservé.",
+      "confirm": "Supprimer"
+    }
+  },
+  "myWork": {
+    "title": "Mon travail",
+    "description": "Vos actions, dans l'ordre où elles comptent.",
+    "emptyTitle": "Rien ne vous attend",
+    "emptyDescription": "Aucune action ouverte ne vous est assignée.",
+    "buckets": {
+      "overdue": "En retard",
+      "today": "Aujourd'hui",
+      "soon": "Cette semaine",
+      "later": "Plus tard"
+    },
+    "count": "{count} action(s)",
+    "focus": {
+      "enter": "Mode focus",
+      "title": "Mode focus",
+      "hint": "Cinq actions au maximum. Une à la fois.",
+      "position": "{index} sur {total}",
+      "next": "Suivante",
+      "previous": "Précédente",
+      "exit": "Quitter le mode focus",
+      "done": "Marquer terminée",
+      "unavailable": "Le mode focus s'ouvre à partir de trois actions.",
+      "finished": "C'est tout pour maintenant."
     }
   }
 }

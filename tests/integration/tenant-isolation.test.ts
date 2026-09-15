@@ -28,6 +28,12 @@ type Fixture = {
     query: (sql: string, params?: unknown[]) => Promise<unknown>,
     organizationId: string,
   ) => Promise<string>
+  /**
+   * The column `seed` returns a value for. Defaults to `id`; a pure join table
+   * has no surrogate key, and inventing one just to satisfy this suite would be
+   * the test shaping the schema rather than the other way round.
+   */
+  idColumn?: string
 }
 
 const FIXTURES: Record<string, Fixture> = {
@@ -136,6 +142,68 @@ const FIXTURES: Record<string, Fixture> = {
       return id
     },
   },
+  actions: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const projectId = await FIXTURES.projects?.seed(query, organizationId)
+      await query(
+        'INSERT INTO actions (id, organization_id, project_id, title) VALUES ($1, $2, $3, $4)',
+        [id, organizationId, projectId, 'Action'],
+      )
+      return id
+    },
+  },
+  action_collaborators: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const actionId = await FIXTURES.actions?.seed(query, organizationId)
+      const userId = await seedUser(query, `collab-${id}@example.test`)
+      await query(
+        'INSERT INTO action_collaborators (id, organization_id, action_id, user_id) VALUES ($1, $2, $3, $4)',
+        [id, organizationId, actionId, userId],
+      )
+      return id
+    },
+  },
+  comments: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const actionId = await FIXTURES.actions?.seed(query, organizationId)
+      await query(
+        `INSERT INTO comments (id, organization_id, entity_type, entity_id, body)
+         VALUES ($1, $2, 'action', $3, 'Note interne')`,
+        [id, organizationId, actionId],
+      )
+      return id
+    },
+  },
+  comment_mentions: {
+    // A pure join table: its key is (comment_id, user_id), and the suite is
+    // told so rather than the table being given an id it does not need.
+    idColumn: 'comment_id',
+    seed: async (query, organizationId) => {
+      const commentId = await FIXTURES.comments?.seed(query, organizationId)
+      const userId = await seedUser(query, `mentioned-${newId()}@example.test`)
+      await query(
+        'INSERT INTO comment_mentions (organization_id, comment_id, user_id) VALUES ($1, $2, $3)',
+        [organizationId, commentId, userId],
+      )
+      return commentId as string
+    },
+  },
+  attachments: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const actionId = await FIXTURES.actions?.seed(query, organizationId)
+      const fileId = await FIXTURES.files?.seed(query, organizationId)
+      await query(
+        `INSERT INTO attachments (id, organization_id, file_id, entity_type, entity_id)
+         VALUES ($1, $2, $3, 'action', $4)`,
+        [id, organizationId, fileId, actionId],
+      )
+      return id
+    },
+  },
   files: {
     seed: async (query, organizationId) => {
       const id = newId()
@@ -212,7 +280,7 @@ describe('tenant isolation', () => {
   })
 
   describe.each(Object.keys(FIXTURES))('table %s', (table) => {
-    const idColumn = table === 'organizations' ? 'id' : 'id'
+    const idColumn = FIXTURES[table]?.idColumn ?? 'id'
     const tenantColumn = table === 'organizations' ? 'id' : 'organization_id'
 
     it('org B cannot SELECT a row of org A', async () => {

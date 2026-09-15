@@ -46,6 +46,11 @@
 | [ADR-038](#adr-038) | Portée collaborateur : une clause, écrite une fois | **Acceptée** |
 | [ADR-039](#adr-039) | Le fuseau horaire appartient au projet | **Acceptée** |
 | [ADR-040](#adr-040) | La passerelle distingue entrée brute et entrée validée | **Acceptée** |
+| [ADR-041](#adr-041) | Une action bloquée dit pourquoi | **Acceptée** |
+| [ADR-042](#adr-042) | Une seule notion d'urgence, dans un service pur | **Acceptée** |
+| [ADR-043](#adr-043) | `action.update_own` a besoin d'une règle de ligne | **Acceptée** |
+| [ADR-044](#adr-044) | Une transaction, une requête à la fois | **Acceptée** |
+| [ADR-045](#adr-045) | `event.currentTarget` ne survit pas à un `await` | **Acceptée** |
 
 ---
 
@@ -1044,6 +1049,140 @@ comportement — et la rigueur est intacte : vérifié par `@ts-expect-error` qu
 statut hors énumération et un champ inconnu sont toujours refusés. Les valeurs
 par défaut d'un schéma redeviennent utilisables, ce qui évite la vraie tentation :
 les recopier à chaque appel, jusqu'à ce que deux appels ne soient plus d'accord.
+
+---
+
+<a id="adr-041"></a>
+## ADR-041 — Une action bloquée dit pourquoi
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 5
+
+**Contexte.** `blocked` est le statut qui pourrit un tableau : personne ne sait
+quoi débloquer, donc personne ne débloque. Le cahier des charges prévoit la
+colonne `blocked_reason` ; rien n'obligeait à la remplir.
+
+**Décision.** `checkBlocked` — pure, testée — refuse le statut `blocked` sans
+motif non vide, et la règle s'applique à la création comme à la mise à jour comme
+au changement de statut en un clic. Corollaire : quitter `blocked` **efface** le
+motif, parce qu'un motif périmé fait mentir le tableau aussi sûrement qu'un motif
+absent.
+
+**Pourquoi pas dans Zod.** La règle est conditionnelle au statut, et un schéma
+partiel — « ce champ est requis seulement si cet autre vaut ceci » — se recopie à
+chaque variante d'entrée. Une fonction pure s'écrit une fois et se teste seule.
+
+**Conséquence d'interface.** Les boutons de transition en un clic proposent tout
+sauf `blocked` : celui-là passe par le formulaire, qui a un champ pour la raison.
+On ne propose pas un geste qui sera refusé (principe UX 5).
+
+---
+
+<a id="adr-042"></a>
+## ADR-042 — Une seule notion d'urgence, dans un service pur
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 5
+
+**Contexte.** Trois écrans répondent à « qu'est-ce qui est urgent ? » — la liste
+d'actions, My Work, le mode focus — et un quatrième s'y ajoutera (le tableau de
+bord). Trois tris écrits séparément, ce sont trois réponses différentes à la même
+question, et l'utilisateur qui les compare a raison de ne plus faire confiance.
+
+**Décision.** Un tri, `byUrgency`, dans `src/modules/actions/service.ts` :
+**en retard, puis aujourd'hui, puis par priorité, puis par échéance la plus
+proche**, le sans-date en dernier. `bucketByTiming` (My Work), `focusSelection`
+(mode focus) et `groupByStatus` (kanban) s'appuient tous dessus.
+
+Le calcul du retard passe par `src/lib/dates` — pas par le module projets. La
+frontière de modules l'a signalé au moment où `actions/service.ts` a voulu
+importer `projects/service.ts` : `index.ts` est une entrée **serveur** (ADR-030),
+donc l'importer depuis un service pur l'aurait rendu inutilisable côté client.
+« Quel jour est-on à Abidjan » n'est pas une connaissance du domaine projet ;
+c'est de l'arithmétique de calendrier, et elle vit dans `lib`.
+
+**Le mode focus plafonne à cinq, et n'ouvre pas en dessous de trois.** Le
+plafond *est* la fonctionnalité : une liste « focus » de vingt est un backlog
+renommé. En dessous de trois, il n'y a rien sur quoi se concentrer.
+
+---
+
+<a id="adr-043"></a>
+## ADR-043 — `action.update_own` a besoin d'une règle de ligne
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 5
+
+**Contexte.** La matrice dit qu'un `collaborator` porte `action.update_own`. Elle
+ne peut pas dire *lesquelles* : ça dépend de la ligne. Sans seconde moitié,
+`update_own` est exactement `update_any` avec un nom rassurant.
+
+**Décision.** `src/modules/actions/policy.ts` — pure, testée — répond à « cette
+personne peut-elle modifier CETTE action ». « Sienne » veut dire : responsable,
+ou collaborateur listé, ou l'auteur de la ligne. Plus étroit, un collaborateur ne
+peut pas cocher le travail qu'on vient de lui confier ; plus large, la distinction
+disparaît.
+
+La fonction prend le **verdict** de `can()`, pas un `Actor` : la matrice reste la
+source unique de ce qu'un rôle peut faire, et ce fichier reste testable sans elle.
+
+**Refus en 404, jamais 403** — confirmer que la ligne existe est déjà une
+divulgation. Même posture qu'ailleurs dans le produit.
+
+Un cas séparé : **on ne supprime que ses propres commentaires**, quel que soit le
+rôle. Un manager qui efface le commentaire d'un collègue réécrit un historique ;
+ce n'est pas une permission, c'est une réécriture.
+
+---
+
+<a id="adr-044"></a>
+## ADR-044 — Une transaction, une requête à la fois
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 5
+
+**Contexte.** Trouvé au LOT 5, en lisant les journaux du serveur E2E :
+
+> `Calling client.query() when the client is already executing a query is deprecated`
+
+`listActionTaxonomies` lançait ses trois `SELECT` en `Promise.all`. Or toutes les
+requêtes d'un handler passent par **la même connexion**, à l'intérieur d'une seule
+transaction `withTenant` : `pg` ne les entrelace pas, il les met en file — et la
+prochaine version supprimera le filet.
+
+**Décision.** À l'intérieur d'un handler, les lectures sont **séquentielles**. Le
+`Promise.all` reste légitime là où les appels ne partagent pas de connexion :
+plusieurs `defineQuery` depuis une page, par exemple, ouvrent chacun sa propre
+transaction.
+
+**Conséquence.** Le parallélisme gagnait une milliseconde et coûtait la
+correction. Une règle simple : si deux `await` touchent le même `db`, ils
+s'écrivent l'un après l'autre.
+
+---
+
+<a id="adr-045"></a>
+## ADR-045 — `event.currentTarget` ne survit pas à un `await`
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 5
+
+**Contexte.** Le formulaire de commentaires affichait « Impossible d'enregistrer
+ce commentaire » alors que le commentaire **était** enregistré. La cause :
+
+```ts
+await addComment({ … })
+event.currentTarget.reset()   // currentTarget vaut null ici
+```
+
+`currentTarget` n'est valide que pendant la propagation de l'événement. Après un
+`await`, il est `null`, le `.reset()` lève, le `catch` attrape — et signale un
+échec pour une écriture réussie.
+
+**Ce que ça a coûté à trouver**, et pourquoi c'est consigné : aucune erreur
+serveur, aucune trace, un message d'échec parfaitement crédible. Le diagnostic n'a
+avancé qu'en constatant que **rien** n'était journalisé côté serveur — donc que
+l'erreur était dans le navigateur.
+
+**Décision.** Capturer l'élément **avant** tout `await` :
+`const element = event.currentTarget`. Et, plus généralement : un `catch` qui
+enveloppe autre chose que l'appel réseau attribue à cet appel des erreurs qui ne
+sont pas les siennes.
 
 ---
 

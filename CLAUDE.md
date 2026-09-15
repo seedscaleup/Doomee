@@ -29,10 +29,10 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | **LOT 4 terminé et vérifié** — `pnpm verify` vert de bout en bout |
+| **Phase actuelle** | **LOT 5 terminé et vérifié** — `pnpm verify` vert. **CHECKPOINT 1 atteint (LOT 0 → 5)** |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | Domaine projet : `projects` · `project_members` · `milestones`, **portée collaborateur** appliquée à toute lecture et prouvée par mutation (ADR-038), fuseau porté par le projet (ADR-039), `progress_percent` réécrit en transaction |
-| **Prochaine étape** | **LOT 5 — actions & My Work.** Aucune décision ouverte ne le bloque |
+| **Dernier jalon** | Domaine action : `actions` · `action_collaborators` · `comments` · `attachments` + taxonomies seedées, création rapide, kanban, **My Work**, **Focus Mode**, commentaires internes par défaut, compteurs projet réécrits en transaction |
+| **Prochaine étape** | **LOT 6 — objectifs**, après validation du CHECKPOINT 1 |
 | **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md` |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
@@ -258,6 +258,10 @@ pnpm verify           # tout, dans l'ordre de la CI
 | ❌ Ajouter une colonne dans une migration écrite à la main sans la déclarer en TypeScript | → invisible pour les requêtes, recréée au prochain `db:generate` ; un test compare les deux (ADR-036) |
 | ❌ Une page qui charge des options que son lecteur n'a pas le droit de lire | → appeler `can()` **avant** la lecture ; sinon l'écran échoue en 404 pour le rôle le plus restreint (ADR-038) |
 | ❌ Lire `page.url()` juste après un `click()` dans un test E2E | → l'URL est encore celle de la page précédente, et l'assertion ne vérifie plus rien |
+| ❌ `event.currentTarget` après un `await` | → il vaut `null` ; capturer l'élément **avant** (ADR-045) |
+| ❌ `Promise.all` de plusieurs requêtes sur le même `db` | → une transaction = une connexion = une requête à la fois (ADR-044) |
+| ❌ Un `catch` qui enveloppe plus que l'appel réseau | → il attribue à l'écriture des erreurs qui ne sont pas les siennes |
+| ❌ Une permission `*_own` sans règle de ligne | → c'est `*_any` avec un nom rassurant ; `policy.ts` (ADR-043) |
 | ❌ Un composant client qui importe le barrel d'un module | → importer `mutations.ts` ou `service.ts` (ADR-030) |
 | ❌ Membre `INHERIT` de `app_user` et `app_portal` | → `NOINHERIT`, sinon union des politiques RLS (ADR-029) |
 | ❌ Une page qui appelle `requireSession()` directement | → `requirePageSession(locale)` : layout et page rendent en parallèle |

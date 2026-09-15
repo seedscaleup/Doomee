@@ -87,22 +87,27 @@ export function Button({
   )
 }
 
+const ALERT_TONES = {
+  // Brand colours for the fill and the border, their `-text` siblings for the
+  // text itself (ADR-032) — the contrast test reads these classes' tokens.
+  error: 'border-danger/30 bg-danger-soft text-danger-text',
+  success: 'border-success/30 bg-success-soft text-success-text',
+  warning: 'border-warning/30 bg-warning-soft text-warning-text',
+} as const
+
 export function Alert({
   tone,
   children,
 }: {
-  tone: 'error' | 'success'
+  tone: keyof typeof ALERT_TONES
   children: React.ReactNode
 }) {
   return (
     <p
+      // A warning is a status, not an interruption: it is already on screen
+      // when the reader arrives, so it does not deserve an assertive role.
       role={tone === 'error' ? 'alert' : 'status'}
-      className={cn(
-        'rounded-doomee border px-3 py-2 text-label',
-        tone === 'error'
-          ? 'border-danger/30 bg-danger-soft text-danger-text'
-          : 'border-success/30 bg-success-soft text-success-text',
-      )}
+      className={cn('rounded-doomee border px-3 py-2 text-label', ALERT_TONES[tone])}
     >
       {children}
     </p>

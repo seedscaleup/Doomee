@@ -41,7 +41,8 @@
     "upload_empty": "This file is empty.",
     "upload_too_large": "This file is larger than 2 MB.",
     "upload_unsupported_type": "Unsupported format: PNG, JPEG or WebP only.",
-    "project_owner_is_member": "Change the project owner first."
+    "project_owner_is_member": "Change the project owner first.",
+    "blocked_reason_required": "Say why this action is blocked."
   },
   "notFound": {
     "title": "Page not found",
@@ -168,6 +169,7 @@
     "home": "Home",
     "myWork": "My work",
     "projects": "Projects",
+    "actions": "Actions",
     "results": "Results",
     "insights": "Insights",
     "reports": "Reports",
@@ -427,6 +429,17 @@
       "milestone_reached": "{actor} reached the milestone {name}",
       "milestone_reopened": "{actor} reopened the milestone {name}",
       "milestone_deleted": "{actor} deleted the milestone {name}"
+    },
+    "action": {
+      "created": "{actor} created the action {name}",
+      "updated": "{actor} updated {name}",
+      "completed": "{actor} completed {name}",
+      "blocked": "{actor} blocked {name}",
+      "cancelled": "{actor} cancelled {name}",
+      "status_changed": "{actor} changed the status of {name}",
+      "deleted": "{actor} deleted {name}",
+      "commented": "{actor} commented on {name}",
+      "collaborators_changed": "{actor} changed the collaborators of {name}"
     }
   },
   "projects": {
@@ -522,6 +535,135 @@
       "title": "Archive this project?",
       "description": "It leaves the active lists. Its data is kept.",
       "confirm": "Archive"
+    }
+  },
+  "actions": {
+    "title": "Actions",
+    "description": "What is moving, what is stuck, what is coming.",
+    "new": "New action",
+    "quickCreate": {
+      "title": "New action",
+      "titleField": "What needs doing?",
+      "placeholder": "e.g. Publish the launch carousel",
+      "project": "Project",
+      "assignee": "Owner",
+      "dueDate": "Due",
+      "priority": "Priority",
+      "submit": "Create",
+      "hint": "The rest can wait: fill it in on the action itself.",
+      "failed": "Could not create this action."
+    },
+    "searchPlaceholder": "Search for an action",
+    "statusFilter": "Status",
+    "projectFilter": "Project",
+    "viewFilter": "View",
+    "views": {
+      "list": "List",
+      "board": "Board"
+    },
+    "showClosed": "Show finished actions",
+    "emptyTitle": "No actions yet",
+    "emptyDescription": "Create a project's first action: it is the second step of the loop.",
+    "noResultsTitle": "No action matches",
+    "noResultsDescription": "Widen the search or change the filter.",
+    "noProject": "No project",
+    "unassigned": "Unassigned",
+    "columns": {
+      "title": "Action",
+      "status": "Status",
+      "project": "Project",
+      "assignee": "Owner",
+      "dueDate": "Due",
+      "priority": "Priority"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "comments": "Comments",
+      "attachments": "Attachments",
+      "activity": "History"
+    },
+    "form": {
+      "editTitle": "Edit action",
+      "title": "Title",
+      "description": "Description",
+      "status": "Status",
+      "priority": "Priority",
+      "assignee": "Owner",
+      "actionType": "Action type",
+      "category": "Category",
+      "channel": "Channel",
+      "startDate": "Start",
+      "dueDate": "Due",
+      "estimatedMinutes": "Estimated (min)",
+      "spentMinutes": "Spent (min)",
+      "blockedReason": "Why is it blocked?",
+      "blockedReasonHint": "A blocked action with no reason is one nobody unblocks.",
+      "isClientVisible": "Visible to the client",
+      "collaborators": "Collaborators",
+      "collaboratorsHint": "One person is accountable; the others help.",
+      "failed": "Could not save this action."
+    },
+    "timing": {
+      "overdue": "Overdue",
+      "today": "Today",
+      "soon": "This week",
+      "later": "Later",
+      "none": "No due date"
+    },
+    "comments": {
+      "title": "Comments",
+      "placeholder": "Write a comment…",
+      "submit": "Comment",
+      "mentions": "Mention",
+      "visibility": "Visibility",
+      "internal": "Internal",
+      "shared": "Visible to the client",
+      "internalHint": "Internal by default. The client sees a comment only if you share it.",
+      "mentioned": "Mentioned: {names}",
+      "delete": "Delete",
+      "emptyTitle": "No comments",
+      "emptyDescription": "Discussion about this action will appear here.",
+      "failed": "Could not save this comment."
+    },
+    "attachments": {
+      "title": "Attachments",
+      "add": "Attach a file",
+      "hint": "PNG, JPEG, WebP or PDF, 10 MB maximum.",
+      "open": "Open",
+      "emptyTitle": "No attachments",
+      "emptyDescription": "Attach a mockup, a brief, an export.",
+      "failed": "Could not attach this file."
+    },
+    "delete": {
+      "action": "Delete",
+      "title": "Delete this action?",
+      "description": "It leaves the lists. Its history is kept.",
+      "confirm": "Delete"
+    }
+  },
+  "myWork": {
+    "title": "My work",
+    "description": "Your actions, in the order that matters.",
+    "emptyTitle": "Nothing waiting for you",
+    "emptyDescription": "No open action is assigned to you.",
+    "buckets": {
+      "overdue": "Overdue",
+      "today": "Today",
+      "soon": "This week",
+      "later": "Later"
+    },
+    "count": "{count} action(s)",
+    "focus": {
+      "enter": "Focus mode",
+      "title": "Focus mode",
+      "hint": "Five actions at most. One at a time.",
+      "position": "{index} of {total}",
+      "next": "Next",
+      "previous": "Previous",
+      "exit": "Leave focus mode",
+      "done": "Mark done",
+      "unavailable": "Focus mode opens from three actions.",
+      "finished": "That is all for now."
     }
   }
 }
