@@ -18,6 +18,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:provision": "tsx src/db/provision.ts",
     "db:seed": "tsx src/db/seed/index.ts",
+    "db:recompute-health": "tsx scripts/recompute-health.ts",
     "db:refresh-views": "tsx src/db/refresh-views.ts",
     "test": "vitest run --project unit --coverage",
     "test:integration": "vitest run --project integration",

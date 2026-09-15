@@ -5,6 +5,8 @@ import { useState } from 'react'
 import {
   ConfirmDialog,
   EmptyState,
+  type HealthFactorView,
+  HealthScore,
   type LoopStageView,
   LoopStrip,
   PageHeader,
@@ -17,6 +19,7 @@ import {
 import { Button } from '@/components/ui/field'
 import { Link, useRouter } from '@/i18n/navigation'
 import type { Locale } from '@/i18n/routing'
+import type { PersonOption, RiskRow } from '@/modules/health/types'
 import type { MetricOption, ObjectiveRow, TaxonomyOption } from '@/modules/objectives/types'
 import { archiveProject } from '@/modules/projects/mutations'
 import { daysUntil, isOverdue, priorityTone, statusTone } from '@/modules/projects/service'
@@ -31,6 +34,7 @@ import { ProjectFormSheet } from '../project-form-sheet'
 import { MembersPanel } from './members-panel'
 import { MilestonesPanel } from './milestones-panel'
 import { ObjectivesPanel } from './objectives-panel'
+import { RisksPanel } from './risks-panel'
 
 type ActivityEntry = {
   id: string
@@ -40,7 +44,7 @@ type ActivityEntry = {
   createdAt: string
 }
 
-const TABS = ['overview', 'objectives', 'members', 'milestones', 'activity'] as const
+const TABS = ['overview', 'objectives', 'risks', 'members', 'milestones', 'activity'] as const
 type Tab = (typeof TABS)[number]
 
 export function ProjectDetailScreen({
@@ -55,7 +59,12 @@ export function ProjectDetailScreen({
   colleagues,
   activity,
   loop,
+  health,
+  risks,
+  people,
   canManage,
+  canCreateRisk,
+  canUpdateRisk,
   backLabel,
 }: {
   project: ProjectDetail
@@ -70,8 +79,19 @@ export function ProjectDetailScreen({
   activity: ActivityEntry[]
   /** Where this project stands in the central loop (LOT 10). */
   loop: { stages: LoopStageView[]; caption: string }
+  /** 🔒 Internal only (ADR-025). Never rendered in the portal. */
+  health: {
+    score: number | null
+    status: 'healthy' | 'at_risk' | 'blocked' | null
+    factors: HealthFactorView[]
+    computedAt: string | null
+  }
+  risks: RiskRow[]
+  people: PersonOption[]
   /** Hiding is a courtesy, not the control: the gateway refuses either way. */
   canManage: boolean
+  canCreateRisk: boolean
+  canUpdateRisk: boolean
   backLabel: string
 }) {
   const t = useTranslations('projects')
@@ -135,6 +155,15 @@ export function ProjectDetailScreen({
 
       {tab === 'overview' ? (
         <div className="flex flex-col gap-6">
+          {/* 🔒 The health score, with its reasons. Internal screens only —
+              there is no portal view for it and there never will be
+              (ADR-025). */}
+          <HealthScore
+            score={health.score}
+            status={health.status}
+            factors={health.factors}
+            computedAt={health.computedAt}
+          />
           {/* The product's own diagram, filled in with this project's counts —
               and pointing at the step where the loop currently stops. */}
           <LoopStrip stages={loop.stages} label={t('loop')} caption={loop.caption} />
@@ -154,6 +183,16 @@ export function ProjectDetailScreen({
           }))}
           locale={locale}
           canManage={canManage}
+        />
+      ) : null}
+
+      {tab === 'risks' ? (
+        <RisksPanel
+          projectId={project.id}
+          risks={risks}
+          people={people}
+          canCreate={canCreateRisk}
+          canUpdate={canUpdateRisk}
         />
       ) : null}
 

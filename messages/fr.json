@@ -57,7 +57,8 @@
     "insight_not_found": "Cet insight est introuvable.",
     "insight_no_recommendation": "Cet insight ne recommande rien : il n'y a pas d'action à en tirer.",
     "result_not_found": "Un des résultats sélectionnés est introuvable.",
-    "period_inverted": "La période se termine avant de commencer."
+    "period_inverted": "La période se termine avant de commencer.",
+    "risk_not_found": "Ce risque est introuvable."
   },
   "notFound": {
     "title": "Page introuvable",
@@ -197,7 +198,8 @@
     "commandPalette": "Aller à…",
     "commandPaletteHint": "⌘K",
     "noResults": "Aucun résultat.",
-    "deliverables": "Livrables"
+    "deliverables": "Livrables",
+    "alerts": "Alertes"
   },
   "settings": {
     "title": "Paramètres",
@@ -334,6 +336,11 @@
       "upcoming": "À venir",
       "reached": "Atteint",
       "missed": "Manqué"
+    },
+    "risk": {
+      "open": "Ouvert",
+      "mitigated": "Maîtrisé",
+      "closed": "Clos"
     }
   },
   "priority": {
@@ -483,6 +490,9 @@
     "insight": {
       "created": "{actor} a créé l’insight {name}",
       "action_created": "{actor} a créé l’action {name} depuis un insight"
+    },
+    "risk": {
+      "created": "{actor} a signalé le risque {name}"
     }
   },
   "projects": {
@@ -508,6 +518,7 @@
     "tabs": {
       "overview": "Informations",
       "objectives": "Objectifs",
+      "risks": "Risques",
       "members": "Équipe",
       "milestones": "Jalons",
       "activity": "Historique"
@@ -1099,6 +1110,109 @@
         "insight": "Insight",
         "nextAction": "Prochaine action"
       }
+    }
+  },
+  "health": {
+    "title": "Santé du projet",
+    "internalOnly": "Indicateur interne. Jamais visible du client.",
+    "score": "{score}/100",
+    "computedAt": "Calculé le {date}",
+    "never": "Jamais calculé",
+    "recompute": "Recalculer",
+    "factors": "Ce qui pèse",
+    "allGood": "Aucun facteur ne pèse sur ce projet.",
+    "weight": "poids {percent} %",
+    "history": "Historique",
+    "noHistory": "Aucun historique.",
+    "factor": {
+      "progress_vs_schedule": "{gap} % de retard sur le calendrier : {elapsed} % du temps écoulé pour {progress} % d'avancement.",
+      "overdue_actions": "{count} action(s) en retard sur {total}.",
+      "deadline_compliance": "{count} jalon(s) dépassé(s) sur {total}.",
+      "pending_validation": "{count} validation(s) client en attente depuis {days} jour(s).",
+      "open_risks": "{count} risque(s) ouvert(s), dont {critical} critique(s).",
+      "blocked_actions": "{count} action(s) bloquée(s).",
+      "workload": "Une seule personne porte {count} action(s) ouverte(s).",
+      "missing_results": "{count} action(s) terminée(s) sans résultat saisi."
+    },
+    "factorName": {
+      "progress_vs_schedule": "Avancement vs calendrier",
+      "overdue_actions": "Actions en retard",
+      "deadline_compliance": "Respect des jalons",
+      "pending_validation": "Validations en attente",
+      "open_risks": "Risques ouverts",
+      "blocked_actions": "Actions bloquées",
+      "workload": "Charge de l'équipe",
+      "missing_results": "Résultats manquants"
+    }
+  },
+  "risks": {
+    "title": "Risques & problèmes",
+    "description": "Ce qui peut mal tourner, et ce qui a déjà mal tourné.",
+    "new": "+ Signaler un risque",
+    "emptyTitle": "Aucun risque signalé",
+    "emptyDescription": "Un risque écrit est un risque qu'on peut traiter.",
+    "noneForFilter": "Aucun risque ne correspond à ces filtres.",
+    "kind": {
+      "risk": "Risque",
+      "issue": "Problème"
+    },
+    "form": {
+      "createTitle": "Signaler un risque",
+      "editTitle": "Modifier le risque",
+      "name": "Titre",
+      "namePlaceholder": "Ex. Le prestataire a deux semaines de retard",
+      "project": "Projet",
+      "kind": "Nature",
+      "level": "Niveau",
+      "description": "Description",
+      "impact": "Impact",
+      "probability": "Probabilité",
+      "probabilityHint": "Estimation interne. Jamais montrée au client.",
+      "owner": "Responsable",
+      "identifiedOn": "Identifié le",
+      "mitigationPlan": "Plan d'action",
+      "status": "Statut",
+      "isClientVisible": "Visible par le client",
+      "failed": "Impossible d'enregistrer ce risque."
+    },
+    "filters": {
+      "all": "Tous",
+      "project": "Projet",
+      "level": "Niveau",
+      "status": "Statut",
+      "search": "Rechercher"
+    },
+    "columns": {
+      "title": "Risque",
+      "project": "Projet",
+      "level": "Niveau",
+      "status": "Statut",
+      "owner": "Responsable"
+    },
+    "delete": {
+      "action": "Supprimer",
+      "title": "Supprimer ce risque ?",
+      "description": "Il disparaît du registre et cesse de peser sur la santé du projet.",
+      "confirm": "Supprimer"
+    }
+  },
+  "alerts": {
+    "title": "Alertes",
+    "description": "Ce qui demande une décision aujourd'hui.",
+    "empty": "Rien ne demande votre attention.",
+    "emptyHint": "Aucun retard, aucune validation en attente, aucun projet à risque.",
+    "count": "{count} alerte(s)",
+    "kind": {
+      "overdue_action": "Retards",
+      "pending_validation": "Validations en attente",
+      "project_at_risk": "Projets à risque",
+      "objective_behind": "Objectifs sous la cible"
+    },
+    "line": {
+      "overdue_action": "En retard de {days} jour(s)",
+      "pending_validation": "Chez le client depuis {days} jour(s)",
+      "project_at_risk": "Santé à {score}/100",
+      "objective_behind": "{percent} % de la cible, période terminée"
     }
   }
 }

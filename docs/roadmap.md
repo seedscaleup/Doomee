@@ -277,16 +277,21 @@ retapé en chemin.
 
 ---
 
-## LOT 11 — Project Health, risques, alertes · *critère MVP 14*
-1. Schéma `project_health_snapshots`, `risks`.
-2. Service `health` (pur) : 8 facteurs, pondérations issues de `organizations.settings`, score 0–100, statut.
-3. **Explication localisée** : `code` + `params` → phrase FR/EN. Testée dans les deux langues.
-4. Composant `HealthScore` (score, statut, facteurs dépliables) — **écrans internes uniquement**, jamais dans `(portal)` (ADR-025).
-5. CRUD risques & problèmes (niveau, impact, plan d'action, statut).
-6. Centre d'alertes : retards, validations en attente, projets à risque, objectifs sous la cible.
-7. Job de recalcul (planifié + à l'événement) + historique de santé.
+## LOT 11 — Project Health, risques, alertes · *critère MVP 14* — ✅ **terminé**
+1. ✅ Schéma `project_health_snapshots` (**écriture seule** : un instantané est ce que le score *était*) et `risks` (risque **et** problème, un `kind` plutôt que deux tables), RLS et isolation générée.
+2. ✅ Service `health` **pur** : les 8 facteurs, pondérations depuis `organizations.settings.health.weights`, score 0–100 normalisé, statut qui **n'est pas un seuil** — une action bloquée bloque le projet (ADR-068).
+3. ✅ **Explication localisée** : `code` + `params` → phrase FR/EN, rendue au moment de la lecture. Test **généré depuis la liste des facteurs**, dans les deux langues (ADR-069).
+4. ✅ Composant `HealthScore` — score, statut, facteurs dépliables triés par **points perdus**. Écrans internes uniquement, et la règle est écrite sur l'écran (ADR-070).
+5. ✅ CRUD risques & problèmes sur la fiche projet : niveau, impact, probabilité **interne**, plan d'action, statut, partage client en opt-in.
+6. ✅ Centre d'alertes `/app/alerts` : retards, validations en attente, projets à risque, objectifs sous la cible. **Pas un fil** — chaque ligne mène où la décision se prend (ADR-072).
+7. ✅ Job de recalcul (`pnpm db:recompute-health`) + historique. Il appelle **la même** `refreshProjectHealth` que les mutations (ADR-071).
 
-✅ **Sortie** : E2E « identifier rapidement les retards et les risques ».
+✅ **Sortie** : E2E « identifier rapidement les retards et les risques » ✅ FR + EN, plus la preuve
+côté client que le Health Score n'apparaît **nulle part** dans le portail.
+
+> 🔒 `project_health_snapshots` n'a aucune vue `portal.*`, aucun grant, aucune politique — et les
+> quatre colonnes de santé de `projects` sont refusées jusque dans un `WHERE` (ADR-070).
+> Vérifié par mutation : sept tests échouent si on les expose.
 
 ---
 

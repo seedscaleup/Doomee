@@ -2033,6 +2033,157 @@ objectif » sur un projet neuf et « boucle bouclée » à la fin du parcours.
 
 ---
 
+## ADR-068 — Un score de santé se montre avec ses raisons, ou pas du tout
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 11
+
+**Contexte.** Un « 62/100 » sur une fiche projet est une note sans copie. Le
+manager qui le lit ne sait ni pourquoi, ni quoi faire. Et un indicateur sur
+lequel personne n'agit devient un indicateur que tout le monde ignore.
+
+**Décision.** `computeHealth` renvoie le score **et** les huit facteurs qui le
+composent — pas un nombre dont on pourrait redériver les raisons plus tard,
+contre d'autres données. Le composant `HealthScore` refuse d'afficher l'un sans
+l'autre.
+
+**Le tri qui compte : par points PERDUS, pas par score brut.** Un facteur à 40
+pondéré 0,05 coûte trois points ; un facteur à 80 pondéré 0,20 en coûte quatre.
+C'est le second qu'il faut traiter, et c'est le second que `worstFactors`
+remonte en tête.
+
+**Le statut n'est pas un seuil sur le score.** Une action bloquée ou un risque
+critique rendent le projet `blocked`, quelle que soit la moyenne. Un 82/100 qui
+n'avance pas n'est pas « en bonne santé », et un statut qui le prétendrait
+apprendrait aux gens à ne plus le lire.
+
+**Les pondérations sont des données** (règle 7) : `organizations.settings.health.weights`,
+écrites à la création de l'organisation. `normaliseWeights` les ramène à une
+somme de 1 — une carte de poids qui sommerait à 1,4 produirait des scores
+au-dessus de 100, et personne ne s'en apercevrait avant qu'un tableau de bord
+affiche 137 %. Un poids négatif (« être en retard améliore le score ») devient
+zéro ; tout à zéro retombe sur les valeurs par défaut plutôt que de diviser par
+zéro.
+
+**Le huitième facteur est celui qui fait de ce score un score Doomee** :
+`missing_results` — du travail terminé dont rien n'a été mesuré. Une agence qui
+livre sans mesurer n'est pas en bonne santé, si ponctuelle soit-elle.
+
+**Ce qui empêche la régression.** `tests/unit/health-service.test.ts` : 26 tests,
+chaque facteur isolément, les bornes 0–100 sur une entrée catastrophique, et le
+tri par points perdus.
+
+---
+
+## ADR-069 — Un facteur stocke un code et des paramètres, jamais une phrase
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 11
+
+**Contexte.** « 3 actions sont en retard » doit se lire en français par un
+collègue et en anglais par un autre — depuis **la même ligne stockée**, sans
+recalcul.
+
+**Décision.** `project_health_snapshots.factors` contient
+`{ code, weight, score, params }`. Le catalogue i18n produit la phrase au
+moment de la lecture (ADR-011). Une phrase stockée est une phrase dans une
+langue pour toujours.
+
+**Ce qui empêche la régression.** `tests/unit/health-explanation.test.ts` est
+**généré depuis la liste des facteurs** : un facteur ajouté sans phrase échoue
+au lieu d'afficher son propre code à un utilisateur. Chaque phrase est vérifiée
+dans les deux langues, et le test échoue aussi si un `{placeholder}` survit au
+rendu — c'est-à-dire si un paramètre manque.
+
+---
+
+## ADR-070 — Le Health Score n'a pas de vue portail, et n'en aura pas
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 11
+
+**Contexte.** ADR-025 a tranché le 2026-09-14 : le Health Score est un outil
+**interne**. Le LOT 11 est le premier lot où cette décision peut être violée,
+parce que c'est le premier où le score existe.
+
+**Décision.** `project_health_snapshots` n'a **aucune** politique portail,
+**aucun** grant, **aucune** vue. Les colonnes `health_score`, `health_status`,
+`health_computed_at` et `open_risks_count` de `projects` ne sont dans aucun
+`GRANT SELECT (colonnes)` — donc refusées même dans un `WHERE` (ADR-061).
+
+Le composant `HealthScore` porte la règle **écrite sur l'écran lui-même** : un
+développeur qui lit cette page n'a pas à retrouver ADR-025 pour la connaître.
+
+**Les risques, eux, passent** — par un geste délibéré (`is_client_visible`), et
+sans la colonne `probability` : une estimation interne de la probabilité qu'un
+projet tourne mal est une note de travail, pas une déclaration au client. Un
+risque `closed` cesse d'être montré : ce n'est plus quelque chose dont il faut
+s'inquiéter.
+
+**Ce qui empêche la régression.** Quatre tests nommés dans la suite de fuite
+portail — aucune vue `health`, aucun grant, lecture refusée, et les quatre
+colonnes de `projects` refusées une à une. **Vérifié par mutation** : en
+ajoutant une vue portail et un grant sur `health_score`, **sept** tests
+échouent en nommant la faute.
+
+---
+
+## ADR-071 — Le job de santé est une logique métier, pas un script de base
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 11
+
+**Contexte.** `projects.health_score` est dénormalisé et réécrit dans la
+transaction qui le fait bouger (ADR-013). Mais **le temps lui-même** change le
+score : une échéance qui passe à minuit, un livrable qui attend un jour de plus
+chez le client, une action qui devient en retard pendant que personne ne
+regardait. Et le temps n'exécute pas de mutation.
+
+**Ce qui a été corrigé en chemin.** La première version du job vivait dans
+`src/db/recompute-health.ts` et importait `@/modules/health/service` :
+dependency-cruiser l'a refusée, à raison — la règle est `app → modules → db|lib`,
+jamais l'inverse. Et pour contourner l'import, j'avais **dupliqué la requête de
+mesure**. Deux copies du même SQL, c'est deux façons de compter la même chose,
+c'est-à-dire la garantie qu'un job nocturne et un écran finiront par ne plus
+dire le même nombre.
+
+**Décision.** Le job vit dans `src/modules/health/job.ts` et appelle
+`refreshProjectHealth` — **la fonction exacte** qu'appellent les mutations.
+`scripts/recompute-health.ts` n'est qu'un point d'entrée CLI.
+
+La seule question inter-tenant — « quelles organisations existent ? » — est
+posée par le migrateur, une fois. **Toute** lecture et écriture de données
+projet passe ensuite par `withTenant`, un projet à la fois : un job qui lirait à
+travers les tenants pour aller plus vite serait le seul endroit du produit où la
+règle 1 ne tient pas.
+
+**La leçon** : quand une règle d'architecture force à dupliquer du code, ce
+n'est pas la règle qui a tort — c'est que le code est au mauvais endroit.
+
+---
+
+## ADR-072 — Le centre d'alertes n'est pas un fil
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 11
+
+**Contexte.** « Centre d'alertes » se conçoit facilement comme un fil de tout ce
+qui s'est passé. Un fil de tout ce qui s'est passé se lit une fois.
+
+**Décision.** Quatre familles, et rien d'autre : **retards**, **validations en
+attente**, **projets à risque**, **objectifs sous la cible**. Chacune est une
+décision à prendre aujourd'hui, et chaque ligne **mène à l'endroit où on la
+prend** (principe UX 5 — *Every action leads somewhere*).
+
+Ce qui n'y est pas : tout ce qui est simplement arrivé. Un événement n'est pas
+une alerte.
+
+Chaque ligne porte ses `params` et sa phrase vient du catalogue, comme les
+facteurs de santé : « en retard de 3 jour(s) », « chez le client depuis 5
+jour(s) ». Aucune pastille jaune ici — le jaune désigne **l'action** d'un écran,
+et une page entièrement jaune ne désigne rien (règle 9).
+
+**Ce qui empêche la régression.** `tests/e2e/health.spec.ts` vérifie qu'un
+espace neuf dit « rien ne demande votre attention » plutôt que d'afficher un
+tableau vide, et qu'une action en retard y apparaît avec son retard.
+
+---
+
 ## Décisions tranchées avec le commanditaire — 2026-09-14
 
 | # | Sujet | Décision | ADR |

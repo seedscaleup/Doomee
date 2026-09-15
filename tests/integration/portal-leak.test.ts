@@ -61,6 +61,9 @@ const FORBIDDEN_COLUMNS = new Set([
   // "What went wrong on our side" is a conversation an agency CHOOSES to have
   // with its client. A column must not have it for them (ADR-065).
   'what_didnt',
+  // An internal estimate of how likely a project is to go wrong is a working
+  // note, not a statement to a client (LOT 11).
+  'probability',
 ])
 
 describe('the client portal leaks nothing', () => {
@@ -268,6 +271,27 @@ describe('the client portal leaks nothing', () => {
     )
     into.attachments = attachmentId
 
+    const riskId = newId()
+    await query(
+      `INSERT INTO risks
+         (id, organization_id, project_id, title, description, level, probability,
+          mitigation_plan, is_client_visible)
+       VALUES ($1, $2, $3, 'Retard fournisseur', 'Le prestataire a deux semaines de retard',
+               'medium', 'Probablement, vu son historique', 'Relancer chaque lundi', $4)`,
+      [riskId, organizationId, projectId, shared],
+    )
+    into.risks = riskId
+
+    // Health is NEVER exposed (ADR-025). It is seeded here precisely so the
+    // assertions below can prove that it is not.
+    const snapshotId = newId()
+    await query(
+      `INSERT INTO project_health_snapshots (id, organization_id, project_id, score, status)
+       VALUES ($1, $2, $3, 42, 'at_risk')`,
+      [snapshotId, organizationId, projectId],
+    )
+    into.project_health_snapshots = snapshotId
+
     const insightId = newId()
     await query(
       `INSERT INTO insights
@@ -351,6 +375,7 @@ describe('the client portal leaks nothing', () => {
     'files',
     'activity_events',
     'insights',
+    'risks',
   ] as const
 
   it.each(EXPOSED)('portal.%s shows the client’s own shared row', async (view) => {
@@ -438,6 +463,81 @@ describe('the client portal leaks nothing', () => {
       tx.execute(sql.raw('SELECT what_didnt FROM public.insights')),
     ).catch((caught: unknown) => caught)
     expect(causeOf(error)).toMatch(/permission denied/i)
+  })
+
+  /**
+   * ==========================================================================
+   * 🔒 THE HEALTH SCORE, WHICH A CLIENT NEVER SEES (ADR-025).
+   *
+   * The commanditaire decided this on 2026-09-14 and it is not a threshold or
+   * a preference — it is a product decision. The fixture writes a snapshot of
+   * 42/100 into every world so these assertions have something real to fail
+   * on: if a view, a grant or a policy ever appears, they turn red.
+   * ==========================================================================
+   */
+  it('has no portal view for health at all', async () => {
+    const { rows } = await query<{ table_name: string }>(
+      `SELECT table_name FROM information_schema.views WHERE table_schema = 'portal'`,
+    )
+    const names = rows.map((row) => row.table_name)
+
+    expect(names).not.toContain('project_health_snapshots')
+    expect(names.filter((name) => name.includes('health'))).toEqual([])
+  })
+
+  it('grants the portal nothing on the health tables', async () => {
+    const { rows } = await query<{ privilege_type: string }>(
+      `SELECT privilege_type FROM information_schema.role_table_grants
+        WHERE grantee = 'app_portal' AND table_name = 'project_health_snapshots'`,
+    )
+    expect(rows).toEqual([])
+  })
+
+  it('refuses a portal read of the health history', async () => {
+    const error = await asPortal((tx) =>
+      tx.execute(sql.raw('SELECT score FROM public.project_health_snapshots')),
+    ).catch((caught: unknown) => caught)
+
+    expect(causeOf(error)).toMatch(/permission denied/i)
+  })
+
+  it.each(['health_score', 'health_status', 'health_computed_at', 'open_risks_count'])(
+    'refuses public.projects.%s',
+    async (column) => {
+      const error = await asPortal((tx) =>
+        tx.execute(sql.raw(`SELECT ${column} FROM public.projects`)),
+      ).catch((caught: unknown) => caught)
+
+      expect(causeOf(error)).toMatch(/permission denied/i)
+    },
+  )
+
+  /**
+   * A risk shared with a client is an act of transparency. The internal
+   * ESTIMATE of how likely it is stays where it was written.
+   */
+  it('shows a shared risk without the internal probability', async () => {
+    const rows = await asPortal((tx) =>
+      tx.execute(sql.raw('SELECT title, mitigation_plan FROM portal.risks')),
+    )
+    expect(rows.rows).toEqual([
+      { title: 'Retard fournisseur', mitigation_plan: 'Relancer chaque lundi' },
+    ])
+
+    const error = await asPortal((tx) =>
+      tx.execute(sql.raw('SELECT probability FROM portal.risks')),
+    ).catch((caught: unknown) => caught)
+    expect(causeOf(error)).toMatch(/does not exist|permission denied/i)
+  })
+
+  /** A closed risk stops being shown: it is no longer something to worry about. */
+  it('stops showing a risk once it is closed', async () => {
+    expect(await idsIn('risks')).toContain(seen.risks)
+
+    await query(`UPDATE risks SET status = 'closed' WHERE id = $1`, [seen.risks])
+    expect(await idsIn('risks')).not.toContain(seen.risks)
+
+    await query(`UPDATE risks SET status = 'open' WHERE id = $1`, [seen.risks])
   })
 
   it('shows the client their own account and no other', async () => {

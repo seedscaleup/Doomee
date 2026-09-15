@@ -57,7 +57,8 @@
     "insight_not_found": "This insight cannot be found.",
     "insight_no_recommendation": "This insight recommends nothing: there is no action to take from it.",
     "result_not_found": "One of the selected results cannot be found.",
-    "period_inverted": "The period ends before it starts."
+    "period_inverted": "The period ends before it starts.",
+    "risk_not_found": "This risk cannot be found."
   },
   "notFound": {
     "title": "Page not found",
@@ -197,7 +198,8 @@
     "commandPalette": "Go to…",
     "commandPaletteHint": "⌘K",
     "noResults": "No results.",
-    "deliverables": "Deliverables"
+    "deliverables": "Deliverables",
+    "alerts": "Alerts"
   },
   "settings": {
     "title": "Settings",
@@ -334,6 +336,11 @@
       "upcoming": "Upcoming",
       "reached": "Reached",
       "missed": "Missed"
+    },
+    "risk": {
+      "open": "Open",
+      "mitigated": "Mitigated",
+      "closed": "Closed"
     }
   },
   "priority": {
@@ -483,6 +490,9 @@
     "insight": {
       "created": "{actor} created the insight {name}",
       "action_created": "{actor} created the action {name} from an insight"
+    },
+    "risk": {
+      "created": "{actor} flagged the risk {name}"
     }
   },
   "projects": {
@@ -508,6 +518,7 @@
     "tabs": {
       "overview": "Overview",
       "objectives": "Objectives",
+      "risks": "Risks",
       "members": "Team",
       "milestones": "Milestones",
       "activity": "History"
@@ -1099,6 +1110,109 @@
         "insight": "Insight",
         "nextAction": "Next action"
       }
+    }
+  },
+  "health": {
+    "title": "Project health",
+    "internalOnly": "Internal indicator. Never visible to the client.",
+    "score": "{score}/100",
+    "computedAt": "Computed on {date}",
+    "never": "Never computed",
+    "recompute": "Recompute",
+    "factors": "What weighs on it",
+    "allGood": "Nothing is weighing on this project.",
+    "weight": "weight {percent}%",
+    "history": "History",
+    "noHistory": "No history.",
+    "factor": {
+      "progress_vs_schedule": "{gap}% behind schedule: {elapsed}% of the time gone for {progress}% done.",
+      "overdue_actions": "{count} action(s) overdue out of {total}.",
+      "deadline_compliance": "{count} milestone(s) missed out of {total}.",
+      "pending_validation": "{count} client validation(s) waiting for {days} day(s).",
+      "open_risks": "{count} open risk(s), {critical} of them critical.",
+      "blocked_actions": "{count} action(s) blocked.",
+      "workload": "One person is carrying {count} open action(s).",
+      "missing_results": "{count} finished action(s) with no result recorded."
+    },
+    "factorName": {
+      "progress_vs_schedule": "Progress vs schedule",
+      "overdue_actions": "Overdue actions",
+      "deadline_compliance": "Milestone compliance",
+      "pending_validation": "Pending validations",
+      "open_risks": "Open risks",
+      "blocked_actions": "Blocked actions",
+      "workload": "Team workload",
+      "missing_results": "Missing results"
+    }
+  },
+  "risks": {
+    "title": "Risks & issues",
+    "description": "What could go wrong, and what already has.",
+    "new": "+ Flag a risk",
+    "emptyTitle": "No risk flagged",
+    "emptyDescription": "A risk written down is a risk that can be dealt with.",
+    "noneForFilter": "No risk matches these filters.",
+    "kind": {
+      "risk": "Risk",
+      "issue": "Issue"
+    },
+    "form": {
+      "createTitle": "Flag a risk",
+      "editTitle": "Edit risk",
+      "name": "Title",
+      "namePlaceholder": "e.g. The supplier is two weeks late",
+      "project": "Project",
+      "kind": "Nature",
+      "level": "Level",
+      "description": "Description",
+      "impact": "Impact",
+      "probability": "Probability",
+      "probabilityHint": "Internal estimate. Never shown to the client.",
+      "owner": "Owner",
+      "identifiedOn": "Identified on",
+      "mitigationPlan": "Mitigation plan",
+      "status": "Status",
+      "isClientVisible": "Visible to the client",
+      "failed": "This risk could not be saved."
+    },
+    "filters": {
+      "all": "All",
+      "project": "Project",
+      "level": "Level",
+      "status": "Status",
+      "search": "Search"
+    },
+    "columns": {
+      "title": "Risk",
+      "project": "Project",
+      "level": "Level",
+      "status": "Status",
+      "owner": "Owner"
+    },
+    "delete": {
+      "action": "Delete",
+      "title": "Delete this risk?",
+      "description": "It leaves the register and stops weighing on the project health.",
+      "confirm": "Delete"
+    }
+  },
+  "alerts": {
+    "title": "Alerts",
+    "description": "What needs a decision today.",
+    "empty": "Nothing needs your attention.",
+    "emptyHint": "No delay, no pending validation, no project at risk.",
+    "count": "{count} alert(s)",
+    "kind": {
+      "overdue_action": "Overdue",
+      "pending_validation": "Pending validations",
+      "project_at_risk": "Projects at risk",
+      "objective_behind": "Objectives behind target"
+    },
+    "line": {
+      "overdue_action": "{days} day(s) overdue",
+      "pending_validation": "With the client for {days} day(s)",
+      "project_at_risk": "Health at {score}/100",
+      "objective_behind": "{percent}% of target, period over"
     }
   }
 }

@@ -6,6 +6,10 @@ import { auditLogs, memberships, organizations, subscriptions } from '@/db/schem
 import { withTenant } from '@/db/tenant'
 import { setActiveOrganization } from '@/lib/auth/session-store'
 import { AppError } from '@/lib/errors/app-error'
+// Through the barrel: a module imports another module by its `index.ts`
+// (CLAUDE.md §5). The precise-file import is for CLIENT components (ADR-030),
+// which this is not.
+import { DEFAULT_HEALTH_WEIGHTS } from '@/modules/health'
 import { defineAction, requireSession } from '@/server'
 import {
   type CreateOrganizationInput,
@@ -47,6 +51,15 @@ export async function createOrganization(raw: CreateOrganizationInput) {
           defaultLocale: input.defaultLocale,
           timezone: input.timezone,
           defaultCurrency: input.defaultCurrency,
+          /**
+           * The health weights, seeded as DATA rather than read from a
+           * constant at score time (rule 7 — no hard-coded business data).
+           *
+           * Writing them here means an organisation can tune what "healthy"
+           * means for the way it works, and it means the defaults are visible
+           * in the row rather than hidden in a fallback nobody reads.
+           */
+          settings: { health: { weights: DEFAULT_HEALTH_WEIGHTS } },
         })
 
         await db.insert(memberships).values({

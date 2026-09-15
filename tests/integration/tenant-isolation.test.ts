@@ -184,6 +184,29 @@ const FIXTURES: Record<string, Fixture> = {
       return id
     },
   },
+  risks: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const projectId = await FIXTURES.projects?.seed(query, organizationId)
+      await query(
+        'INSERT INTO risks (id, organization_id, project_id, title) VALUES ($1, $2, $3, $4)',
+        [id, organizationId, projectId, 'Risque'],
+      )
+      return id
+    },
+  },
+  project_health_snapshots: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const projectId = await FIXTURES.projects?.seed(query, organizationId)
+      await query(
+        `INSERT INTO project_health_snapshots (id, organization_id, project_id, score, status)
+         VALUES ($1, $2, $3, 80, 'healthy')`,
+        [id, organizationId, projectId],
+      )
+      return id
+    },
+  },
   insights: {
     seed: async (query, organizationId) => {
       const id = newId()
@@ -374,6 +397,10 @@ const FIXTURES: Record<string, Fixture> = {
 const NO_UPDATE = new Set([
   'activity_events',
   'result_metrics',
+  // A health snapshot is what the score WAS at a moment. Rewriting one turns
+  // the history into a story, and the whole value of the history is being able
+  // to say "this project has been sliding for three weeks".
+  'project_health_snapshots',
   // A review is a decision that was MADE. "The client approved version 3 on the
   // 14th" has to stay true, or the validation trail is worth nothing. A version
   // is the same kind of fact: correcting it means uploading the next one.

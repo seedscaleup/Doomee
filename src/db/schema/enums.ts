@@ -185,3 +185,30 @@ export const reviewScope = pgEnum('review_scope', ['internal', 'client'])
 
 /** What a review concluded. */
 export const reviewDecision = pgEnum('review_decision', ['approved', 'changes_requested'])
+
+/**
+ * ============================================================================
+ * RISKS AND HEALTH (LOT 11)
+ * ============================================================================
+ */
+
+/**
+ * A risk has not happened yet; an issue already has.
+ *
+ * The cahier des charges asks for "risques & problèmes" and they share every
+ * field — level, impact, owner, mitigation plan. One table with a kind, rather
+ * than two tables that would drift apart the first time a column is added to
+ * one of them.
+ */
+export const riskKind = pgEnum('risk_kind', ['risk', 'issue'])
+
+/** 🟢 faible / 🟠 moyen / 🔴 critique (cahier des charges §M14). */
+export const riskLevel = pgEnum('risk_level', ['low', 'medium', 'critical'])
+
+/**
+ * A state machine, so an enum (ADR-010).
+ *
+ * `mitigated` is not `closed`: a risk whose plan is in place is still a risk,
+ * and collapsing the two would hide exactly the ones being actively managed.
+ */
+export const riskStatus = pgEnum('risk_status', ['open', 'mitigated', 'closed'])

@@ -23,6 +23,7 @@ export type NavKey =
   | 'reports'
   | 'clients'
   | 'deliverables'
+  | 'alerts'
   | 'team'
   | 'calendar'
   | 'settings'
@@ -46,6 +47,7 @@ export type NavEntry = {
 export const NAV_ENTRIES: readonly NavEntry[] = [
   { key: 'home', href: '/app', primary: true },
   { key: 'myWork', href: '/app/my-work', permission: 'action.read', primary: true },
+  { key: 'alerts', href: '/app/alerts', permission: 'action.read' },
   { key: 'projects', href: '/app/projects', permission: 'project.read', primary: true },
   { key: 'actions', href: '/app/actions', permission: 'action.read' },
   { key: 'clients', href: '/app/clients', permission: 'client.create' },

@@ -598,12 +598,33 @@ par le catalogue i18n à partir de `code` + `params` → **l'explication est dis
 
 Facteurs du MVP : `progress_vs_schedule`, `overdue_actions`, `deadline_compliance`, `pending_validation`,
 `open_risks`, `blocked_actions`, `workload`, `missing_results`.
-Pondérations dans `organizations.settings.health.weights`, valeurs par défaut en seed.
+Pondérations dans `organizations.settings.health.weights`, écrites à la **création** de
+l'organisation et ramenées à une somme de 1 par `normaliseWeights` (ADR-068).
+
+> **`REVOKE UPDATE`** : un instantané est ce que le score **était** à un moment. Le réécrire
+> transformerait l'historique en récit, alors que toute sa valeur est de pouvoir dire « ce projet
+> glisse depuis trois semaines ».
+>
+> 🔒 **Aucune vue `portal.*`, aucun grant, aucune politique portail** (ADR-025, ADR-070). Les
+> colonnes `health_score`, `health_status`, `health_computed_at` et `open_risks_count` de
+> `projects` sont refusées à `app_portal` **jusque dans un `WHERE`**.
 
 ### `risks`
-`id` · `organization_id` · `project_id` · `kind risk_kind` · `title` · `description` ·
-`level risk_level` · `impact text` · `probability text NULL` · `owner_user_id` ·
-`identified_on date` · `mitigation_plan text` · `status risk_status` · `resolved_at` · `is_client_visible`
+`id` · `organization_id` · `project_id` · `kind risk_kind` *(`risk` / `issue`)* · `title` ·
+`description` · `level risk_level` *(`low`/`medium`/`critical`)* · `impact text` ·
+`probability text NULL` · `owner_user_id` · `identified_on date` · `mitigation_plan text` ·
+`status risk_status` *(`open`/`mitigated`/`closed`)* · `resolved_at` ·
+`is_client_visible DEFAULT false` · `created_by` · `updated_by` · `deleted_at`
+
+> Un risque n'est pas encore arrivé ; un problème si. Ils partagent **tous** leurs champs, d'où un
+> `kind` plutôt que deux tables qui divergeraient à la première colonne ajoutée à l'une des deux.
+>
+> `mitigated` n'est pas `closed` : un risque dont le plan est en place reste un risque, et
+> confondre les deux masquerait justement ceux qu'on gère activement.
+>
+> ⚠️ **`probability` n'est dans aucune vue `portal.*`** : une estimation interne de la probabilité
+> qu'un projet tourne mal est une note de travail, pas une déclaration au client. Un risque
+> `closed` cesse aussi d'être montré.
 
 ### `meetings`
 `id` · `organization_id` · `project_id` NULL · `client_id` NULL · `title` ·

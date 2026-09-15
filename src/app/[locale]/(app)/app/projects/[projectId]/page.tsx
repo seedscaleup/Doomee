@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { can } from '@/lib/permissions'
 import { listActivity } from '@/modules/activity'
+import { listRiskScopes, listRisks, readProjectHealth, worstFactors } from '@/modules/health'
 import { firstGap, isClosed, loopPercent, readLoop, readProjectLoop } from '@/modules/insights'
 import { listMetrics, listObjectives, listObjectiveTypes } from '@/modules/objectives'
 import {
@@ -37,6 +38,12 @@ export default async function ProjectPage(props: {
    * them (CLAUDE.md §6: the interface asks the same can() the gateway asks).
    */
   const canManage = can(actor, 'project.update')
+  /**
+   * Two more, asked BEFORE the fetches they gate (ADR-038). A collaborator
+   * flags a risk on their own project; only a manager closes one.
+   */
+  const canCreateRisk = can(actor, 'risk.create')
+  const canUpdateRisk = can(actor, 'risk.update')
 
   const [
     members,
@@ -48,6 +55,9 @@ export default async function ProjectPage(props: {
     colleagues,
     activity,
     loopCounts,
+    health,
+    risks,
+    scopes,
   ] = await Promise.all([
     listProjectMembers({ projectId }),
     listMilestones({ projectId }),
@@ -58,6 +68,10 @@ export default async function ProjectPage(props: {
     canManage ? listColleagueOptions() : [],
     listActivity({ projectId, limit: 30 }),
     readProjectLoop({ projectId }),
+    // 🔒 Computed here and rendered on an internal screen only (ADR-025).
+    readProjectHealth({ projectId }),
+    listRisks({ projectId }),
+    canCreateRisk ? listRiskScopes() : { projects: [], people: [] },
   ])
 
   const t = await getTranslations('projects')
@@ -95,6 +109,17 @@ export default async function ProjectPage(props: {
       colleagues={colleagues}
       canManage={canManage}
       loop={{ stages, caption }}
+      health={{
+        score: health.score,
+        status: health.status,
+        // Only the factors actually costing points, ranked by points LOST.
+        factors: worstFactors(health, 4),
+        computedAt: null,
+      }}
+      risks={risks}
+      people={scopes.people}
+      canCreateRisk={canCreateRisk}
+      canUpdateRisk={canUpdateRisk}
       activity={activity.map((entry) => ({
         ...entry,
         createdAt: entry.createdAt.toISOString(),
