@@ -31,4 +31,6 @@ export const SHARED_TAXONOMY_TABLES = new Set([
   'channels',
   'objective_types',
   'metrics',
+  'result_form_templates',
+  'result_form_fields',
 ])

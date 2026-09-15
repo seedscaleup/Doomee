@@ -42,7 +42,8 @@
     "upload_too_large": "This file is larger than 2 MB.",
     "upload_unsupported_type": "Unsupported format: PNG, JPEG or WebP only.",
     "project_owner_is_member": "Change the project owner first.",
-    "blocked_reason_required": "Say why this action is blocked."
+    "blocked_reason_required": "Say why this action is blocked.",
+    "result_values_invalid": "A value does not match what the form expects."
   },
   "notFound": {
     "title": "Page not found",
@@ -447,6 +448,10 @@
       "achieved": "{actor} marked {name} as achieved",
       "missed": "{actor} marked {name} as missed",
       "deleted": "{actor} deleted the objective {name}"
+    },
+    "result": {
+      "recorded": "{actor} recorded results for {name}",
+      "deleted": "{actor} deleted a result of {name}"
     }
   },
   "projects": {
@@ -586,6 +591,7 @@
     },
     "tabs": {
       "overview": "Overview",
+      "results": "Results",
       "comments": "Comments",
       "attachments": "Attachments",
       "activity": "History"
@@ -733,5 +739,89 @@
       "confirm": "Delete"
     },
     "awaitingResults": "Results will fill this column as soon as the first one is recorded."
+  },
+  "results": {
+    "title": "Results",
+    "description": "What the work produced — and what it teaches.",
+    "add": "+ Add results",
+    "addHint": "The action is done. What did it produce?",
+    "later": "Later",
+    "emptyTitle": "No results yet",
+    "emptyDescription": "A result is the moment work stops being activity and becomes evidence.",
+    "noResultsTitle": "No results in this period",
+    "noResultsDescription": "Widen the period or change the filters.",
+    "form": {
+      "title": "Record results",
+      "template": "Form: {name}",
+      "recordedFor": "Result date",
+      "recordedForHint": "The date the result is about, not the date you type it.",
+      "quantitative": "Numbers",
+      "qualitative": "Observations",
+      "analysis": "What did we learn?",
+      "analysisHint": "What explains these numbers, in a sentence or two.",
+      "recommendation": "What should we do next?",
+      "recommendationHint": "The next action these results suggest.",
+      "isClientVisible": "Visible to the client",
+      "optional": "Everything is optional: half a measurement beats none.",
+      "failed": "Could not save these results.",
+      "invalid": "A value does not match what the form expects."
+    },
+    "derived": {
+      "title": "Computed",
+      "hint": "Derived from the numbers above, never stored twice.",
+      "missing": "Missing: {inputs}"
+    },
+    "notes": {
+      "observation": "Observation",
+      "audience_feedback": "Audience feedback",
+      "client_feedback": "Client feedback",
+      "difficulty": "Difficulty",
+      "positive": "What went well",
+      "negative": "What went badly",
+      "learning": "Learning",
+      "opportunity": "Opportunity"
+    },
+    "columns": {
+      "title": "Result",
+      "project": "Project",
+      "client": "Client",
+      "recordedFor": "Date",
+      "metrics": "Measurements",
+      "recordedBy": "Recorded by"
+    },
+    "filters": {
+      "from": "From",
+      "to": "To",
+      "project": "Project",
+      "client": "Client",
+      "all": "All",
+      "channel": "Channel",
+      "actionType": "Action type",
+      "recordedBy": "Recorded by",
+      "reset": "Reset"
+    },
+    "totals": {
+      "title": "Over the period",
+      "previous": "Previous period",
+      "change": "{percent}%",
+      "noPrevious": "No comparison",
+      "samples": "{count} measurement(s)"
+    },
+    "untitled": "Result of {date}",
+    "delete": {
+      "action": "Delete",
+      "title": "Delete this result?",
+      "description": "Its measurements stop counting towards objectives.",
+      "confirm": "Delete"
+    },
+    "performance": {
+      "title": "Best and weakest performances",
+      "metric": "Metric",
+      "best": "What is working",
+      "worst": "What is struggling",
+      "unranked": "This metric has no better end: it is listed without a ranking.",
+      "none": "Not enough measured projects in this window to compare.",
+      "samples": "{count} measurement(s)"
+    }
   }
 }

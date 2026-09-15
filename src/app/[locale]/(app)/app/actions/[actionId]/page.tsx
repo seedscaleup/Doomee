@@ -9,6 +9,7 @@ import {
   listComments,
 } from '@/modules/actions'
 import { listActivity } from '@/modules/activity'
+import { getFormForAction, listResults } from '@/modules/results'
 import { requireActor, requirePageSession } from '@/server'
 import { ActionDetailScreen } from './action-detail'
 
@@ -26,14 +27,19 @@ export default async function ActionPage(props: {
 
   const canEdit = can(actor, 'action.update_own')
 
-  const [collaborators, comments, attachments, taxonomies, people, activity] = await Promise.all([
-    listActionCollaborators({ actionId }),
-    listComments({ actionId }),
-    listAttachments({ actionId }),
-    listActionTaxonomies(),
-    canEdit ? listAssignableUsers() : [],
-    listActivity({ limit: 30 }),
-  ])
+  const [collaborators, comments, attachments, taxonomies, people, activity, form, results] =
+    await Promise.all([
+      listActionCollaborators({ actionId }),
+      listComments({ actionId }),
+      listAttachments({ actionId }),
+      listActionTaxonomies(),
+      canEdit ? listAssignableUsers() : [],
+      listActivity({ limit: 30 }),
+      // The smart form for THIS action's type (ADR-008), fetched with the rest
+      // so the "+ Add results" prompt never waits on a round trip.
+      canEdit ? getFormForAction({ actionId }) : null,
+      listResults({ actionId }),
+    ])
 
   return (
     <ActionDetailScreen
@@ -43,6 +49,8 @@ export default async function ActionPage(props: {
       attachments={attachments}
       taxonomies={taxonomies}
       people={people}
+      form={form}
+      results={results}
       locale={locale === 'en' ? 'en' : 'fr'}
       canEdit={canEdit}
       activity={activity

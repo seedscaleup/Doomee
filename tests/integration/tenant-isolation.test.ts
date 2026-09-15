@@ -142,6 +142,48 @@ const FIXTURES: Record<string, Fixture> = {
       return id
     },
   },
+  results: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const projectId = await FIXTURES.projects?.seed(query, organizationId)
+      await query(
+        `INSERT INTO results (id, organization_id, project_id, recorded_for)
+         VALUES ($1, $2, $3, current_date)`,
+        [id, organizationId, projectId],
+      )
+      return id
+    },
+  },
+  result_metrics: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const resultId = await FIXTURES.results?.seed(query, organizationId)
+      const metricId = newId()
+      await query(
+        `INSERT INTO metrics (id, organization_id, code, labels)
+         VALUES ($1, $2, $3, '{"fr":"M","en":"M"}'::jsonb)`,
+        [metricId, organizationId, `metric-${id}`],
+      )
+      await query(
+        `INSERT INTO result_metrics (id, organization_id, result_id, metric_id, field_key, value, recorded_for)
+         VALUES ($1, $2, $3, $4, 'value', 1, current_date)`,
+        [id, organizationId, resultId, metricId],
+      )
+      return id
+    },
+  },
+  result_notes: {
+    seed: async (query, organizationId) => {
+      const id = newId()
+      const resultId = await FIXTURES.results?.seed(query, organizationId)
+      await query(
+        `INSERT INTO result_notes (id, organization_id, result_id, kind, body)
+         VALUES ($1, $2, $3, 'observation', 'Note')`,
+        [id, organizationId, resultId],
+      )
+      return id
+    },
+  },
   objectives: {
     seed: async (query, organizationId) => {
       const id = newId()
@@ -239,8 +281,20 @@ const FIXTURES: Record<string, Fixture> = {
   },
 }
 
-/** Tables no role may rewrite, so the isolation matrix asserts denial instead. */
-const APPEND_ONLY = new Set(['activity_events'])
+/**
+ * Tables whose rows no role may rewrite, so the matrix asserts denial instead
+ * of absence. The two verbs are tracked separately, because the guarantee is
+ * not the same one:
+ *
+ * · `activity_events` is a history — neither verb, ever. A history that can be
+ *   rewritten is not a history.
+ * · `result_metrics` is a set of observations — UPDATE is revoked so a number
+ *   is never silently changed, but DELETE stays: editing a result replaces its
+ *   metric rows inside one transaction, and that is a rewrite of the SET, not
+ *   of a measurement.
+ */
+const NO_UPDATE = new Set(['activity_events', 'result_metrics'])
+const NO_DELETE = new Set(['activity_events'])
 
 /** Drizzle wraps driver errors; the useful message is on the cause. */
 function pgMessage(error: unknown): string {
@@ -311,7 +365,7 @@ describe('tenant isolation', () => {
     })
 
     it('org B cannot UPDATE a row of org A', async () => {
-      if (APPEND_ONLY.has(table)) {
+      if (NO_UPDATE.has(table)) {
         // No role may update it at all, which is a stronger guarantee than
         // "another tenant may not".
         const error = await withTenant({ organizationId: orgA.id }, (tx) =>
@@ -335,7 +389,7 @@ describe('tenant isolation', () => {
     })
 
     it('org B cannot DELETE a row of org A', async () => {
-      if (APPEND_ONLY.has(table)) {
+      if (NO_DELETE.has(table)) {
         const error = await withTenant({ organizationId: orgA.id }, (tx) =>
           tx.execute(sql.raw(`DELETE FROM ${table}`)),
         ).catch((caught: unknown) => caught)

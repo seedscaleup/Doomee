@@ -1323,6 +1323,235 @@ soupçonner la pile de positionnement.
 
 ---
 
+## ADR-050 — Le formulaire de résultats est une donnée, pas un composant
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 7
+
+**Contexte.** « Quel résultat a produit cette action ? » n'a pas la même réponse
+selon le métier : une campagne publicitaire se mesure en impressions, clics et
+coût par acquisition ; une prestation de conseil en livrables acceptés ; un
+recrutement en candidats qualifiés. Coder un formulaire par métier, c'est
+s'engager à livrer une version pour chaque nouveau client.
+
+**Décision.** Le formulaire est décrit **en base** : `result_form_templates` et
+`result_form_fields` (règle 7). Un gabarit à `organization_id NULL` est un
+gabarit système, lisible par toutes les organisations et modifiable par aucune ;
+une organisation peut créer les siens.
+
+Le rendu est un **moteur** : `buildFormSchema(fields)` construit un schéma Zod
+**strict** à l'exécution à partir des champs, et l'écran affiche ce que le schéma
+décrit. Ajouter un champ ne touche pas au code.
+
+**Le point délicat — les nombres restent des chaînes.** Un champ numérique est
+validé par `/^-?\d{1,16}(\.\d{1,4})?$/` et transporté **tel quel** jusqu'à
+`numeric(20,4)`. Il n'est jamais converti en `number` en chemin : un `double` IEEE
+754 n'a que 15 à 17 chiffres significatifs, et une mesure qui s'arrondit n'est
+plus une preuve (CLAUDE.md §7 — *jamais de float*).
+
+`buildFormSchema` est **pur** : il vit dans `form-engine.ts`, sans `db` ni
+`headers()`, et se teste sans infrastructure.
+
+**Ce qui empêche la régression.** `tests/unit/results-form-engine.test.ts` couvre
+la construction du schéma, le refus d'un champ inconnu (le schéma est `strict`)
+et la précision ; `tests/integration/results.test.ts` vérifie qu'une valeur à
+quatre décimales ressort de PostgreSQL identique à elle-même.
+
+---
+
+## ADR-051 — Une clé étrangère composite ne peut pas viser une table de référence partagée
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 7
+
+**Contexte.** La règle du §7 est sans ambiguïté : les clés étrangères
+intra-tenant sont **composites**, `(organization_id, parent_id) → parents(organization_id, id)`.
+Appliquée mécaniquement à `results.template_id`, elle a produit une violation à
+la première écriture : `results_org_template_fk`.
+
+**La cause.** Un gabarit **système** porte `organization_id = NULL`. Une clé
+composite `(organization_id, template_id)` ne peut donc jamais le désigner : la
+ligne parente n'a pas de tenant à confronter. La contrainte n'était pas trop
+stricte, elle était **inapplicable**.
+
+Le diagnostic a demandé de voir l'erreur brute : `defineAction` convertit tout
+ce qui n'est pas une `AppError` en `internal`, et l'écran ne disait que
+« une erreur est survenue ». Un `console.error` temporaire dans le `catch` de la
+passerelle a donné le nom de la contrainte en une seconde — puis a été retiré.
+
+**Décision.** La forme de la clé suit la **propriété** de la ligne visée, pas la
+table qui la porte :
+
+| Le parent… | Clé |
+|---|---|
+| appartient à un tenant (`projects`, `actions`, `clients`) | **composite** `(organization_id, id)` |
+| est une table de référence partagée (`metrics`, `action_types`, `channels`, `result_form_templates`) | **simple**, par `id` |
+
+C'est déjà la forme de `clients.industry_id` et de `actions.action_type_id` ;
+`results.template_id` s'y range. L'isolation n'est pas perdue : elle est portée
+par la RLS de `results`, et une table de référence partagée est lisible de tous
+par construction.
+
+**Ce qui empêche la régression.** La suite d'isolation générée depuis le schéma
+couvre `results` : une organisation ne lit, n'écrit ni ne modifie la ligne d'une
+autre. Le commentaire sur la colonne explique *pourquoi* elle est simple, pour
+que la prochaine lecture ne la « corrige » pas.
+
+---
+
+## ADR-052 — Une métrique dérivée s'abstient plutôt que d'inventer un zéro
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 7
+
+**Contexte.** Certaines métriques ne sont pas saisies, elles se **déduisent** :
+le taux de clic est `clics / impressions`, le coût par acquisition
+`dépense / conversions`. Le dénominateur peut valoir zéro — une campagne qui n'a
+encore rien converti.
+
+**Décision.** `DERIVED_METRICS` déclare chaque métrique dérivée par son `code`,
+ses `inputs`, sa `formula` lisible et sa fonction `compute`. `ratio()` renvoie
+`null` quand le dénominateur est nul, et `deriveMetrics()` **omet** la métrique
+plutôt que d'écrire `0`.
+
+Un coût par acquisition de `0` se lit « gratuit » : c'est la lecture exactement
+inverse de la vérité. L'absence est la seule réponse honnête, et elle rejoint
+ADR-046 — un écart qu'on ne peut pas calculer dit pourquoi.
+
+Toujours pas de conversion entre devises (ADR-024) : une métrique dérivée de deux
+montants n'est calculée que s'ils portent la **même** devise.
+
+**Ce qui empêche la régression.**
+`tests/unit/results-derived-metrics.test.ts` vérifie le dénominateur nul, la
+propagation de l'absence et le refus de mélanger deux devises.
+
+---
+
+## ADR-053 — Le résultat et le compteur qu'il déplace sont un seul fait
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 7
+
+**Contexte.** Enregistrer un résultat doit faire bouger l'objectif : c'est le
+milieu de la boucle (`RÉSULTAT → ANALYSE`). Recalculer `objectives.current_value`
+après coup — dans un job, dans un second appel — ouvre une fenêtre pendant
+laquelle l'écran montre un résultat saisi et un objectif qui l'ignore.
+
+**Décision.** `recordResult` écrit le résultat, ses `result_metrics`, puis
+appelle `refreshObjectives(db, projectId)` **dans la même transaction**. Si l'une
+échoue, aucune n'a eu lieu. C'est la même règle qu'ADR-013 pour
+`progress_percent`, appliquée un cran plus haut.
+
+**Deux pièges rencontrés en chemin.**
+
+1. **`CASE $1 WHEN 'avg' …` ne compile pas.** PostgreSQL ne peut pas inférer le
+   type d'un paramètre lié à cet endroit. L'agrégation vient donc d'une table de
+   correspondance fermée (`AGGREGATES`) passée par `sql.raw` — un ensemble clos
+   de mots-clés, jamais une chaîne venue de l'utilisateur.
+2. **Aucune devise n'est inventée.** La devise d'une mesure monétaire est celle
+   du **projet** (`budgetCurrency`), jamais une constante écrite dans le code.
+   Une valeur codée en dur produit des agrégats faux et silencieux (ADR-024).
+
+**Ce qui empêche la régression.** `tests/integration/results.test.ts` vérifie que
+l'objectif suit la somme des mesures, et surtout qu'un `ROLLBACK` le laisse
+**intact** : une transaction avortée ne doit pas laisser un compteur avancé sans
+le résultat qui le justifie. `tests/e2e/results.spec.ts` parcourt la boucle de
+bout en bout — clôturer une action, saisir le résultat, voir l'écart se combler.
+
+---
+
+## ADR-054 — Un agrégat dérivé est une vue matérialisée, rafraîchie hors requête
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 7
+
+**Contexte.** « Cette métrique, pour ce client, sur cette période » est la
+question que posent les tableaux de bord et les rapports. Y répondre depuis
+`result_metrics` signifie parcourir toutes les mesures à chaque fois : à la
+volumétrie des 12 mois (ADR-022), des centaines de milliers de lignes pour un
+graphique que personne n'a attendu.
+
+**Décision.** `result_metrics_daily`, **vue matérialisée**, et non une table
+entretenue par triggers : un agrégat est **dérivé**, et une donnée dérivée qu'on
+écrit à la main est une donnée dérivée qui dérive. Rafraîchie par un job
+(`pnpm db:refresh-views`), jamais dans une requête.
+
+`currency` fait partie de la clé de regroupement : deux devises ne tombent jamais
+dans la même ligne (ADR-024).
+
+**La vue n'est pas accordée à `app_user`.** Une vue matérialisée **ne peut pas**
+porter de RLS : elle répondrait pour tous les tenants à la fois. Elle reste donc
+lisible du seul migrateur, pour les jobs de reporting, qui passent
+l'organisation explicitement. C'est l'exception qui confirme la règle 1, et elle
+est gardée par un test.
+
+**Deux erreurs commises et corrigées, parce qu'elles sont instructives.**
+
+1. **Un index d'expression ne permet pas `REFRESH … CONCURRENTLY`.** La clé
+   unique avait été écrite en `coalesce(project_id, '00000000-…')` pour rendre
+   non nulles des dimensions qui peuvent l'être. PostgreSQL l'a refusée :
+   *« Create a unique index with no WHERE clause on one or more **columns** »* —
+   des colonnes, pas des expressions. La vue retombait donc sur le rafraîchissement
+   **bloquant** à chaque exécution : exactement ce qu'elle existait pour éviter,
+   et sans le moindre message. L'index porte désormais sur les colonnes nues,
+   avec `NULLS NOT DISTINCT` (PostgreSQL 15+) qui lui fait **garantir** ce que le
+   `GROUP BY` assurait déjà.
+2. **Ne pas lire l'état dans un message d'erreur.** Le repli « vue non peuplée »
+   testait `/has not been populated/`. PostgreSQL 16 dit
+   *« CONCURRENTLY cannot be used when the materialized view is not populated »* :
+   le repli était du **code mort**, et un serveur en locale française l'aurait
+   tué de toute façon. La fonction interroge maintenant
+   `pg_matviews.ispopulated` et **choisit** son chemin, au lieu d'essayer et de
+   lire l'échec.
+
+**Ce qui empêche la régression.** `tests/integration/derived-views.test.ts` : le
+chemin concurrent, le repli sur une vue vidée par `REFRESH … WITH NO DATA`, la
+séparation des devises, celle des organisations, l'exclusion d'un résultat
+supprimé, et le refus d'accès à `app_user`. Les deux défauts ci-dessus ont été
+trouvés **par** ce test, pas malgré lui.
+
+**La leçon, consignée parce qu'elle se reproduira** : un repli qu'aucun test ne
+déclenche n'est pas un filet de sécurité, c'est une ligne de code qui rassure.
+
+---
+
+## ADR-055 — Le seuil de couverture bloque, ou il n'existe pas
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 7
+
+**Contexte.** La règle 10 du `CLAUDE.md` dit depuis le LOT 0 : *« `service.ts` (pur)
+— ≥ 90 % de couverture, **bloquant** »*. En vérifiant la sortie de `pnpm verify`
+au LOT 7, aucune couverture n'était mesurée : `pnpm test` lançait Vitest sans
+`--coverage`, et `@vitest/coverage-v8` n'était même pas installé. La règle était
+écrite, jamais appliquée — sept lots durant.
+
+**Décision.** Le seuil est **exécuté** : `pnpm test` lance la couverture et
+`thresholds: { statements: 90, branches: 90, functions: 90, lines: 90 }` fait
+échouer la commande en dessous.
+
+La portée est volontairement **étroite** : `src/modules/**/service.ts` et les deux
+moteurs purs du module Results. Les `queries.ts` et `mutations.ts` sont prouvés
+contre une base réelle par la suite d'intégration ; compter leurs lignes ici
+achèterait un plus gros chiffre et moins de vérité.
+
+**Un piège rencontré** : déclarée à l'intérieur d'un `projects[]`, la
+configuration `coverage` est **silencieusement ignorée**. Le rapport comptait
+alors `tests/helpers` comme du code produit. C'est une option **racine**.
+
+**Ce que la mesure a révélé, et qui a été corrigé.** `inspectAttachment` — la
+fonction qui lit la **signature des octets** d'un fichier téléversé, c'est-à-dire
+exactement le garde-fou d'ADR-037 — n'avait **aucun test unitaire** (71 % sur
+`files/service.ts`). Elle en a maintenant neuf, dont le refus d'un SVG déguisé en
+PDF et les deux bornes de la limite de 10 Mo. Les tons de statut et de priorité
+des projets sont couverts branche par branche.
+
+Résultat : 96,3 % d'instructions, 93,9 % de branches, 100 % de fonctions.
+
+**Ce qui empêche la régression.** Le seuil lui-même, vérifié par mutation : porté
+à 99 %, `pnpm test` échoue en nommant les trois métriques en défaut ; remis à
+90 %, il repasse. Un seuil qu'on n'a jamais vu refuser n'est pas un seuil.
+
+**La leçon, consignée parce qu'elle se reproduira** : une règle qui ne vit que
+dans un document a déjà cessé d'être vraie. Vérifier que chaque garde-fou écrit
+dans `CLAUDE.md` correspond à une commande qui échoue.
+
+---
+
 ## Décisions tranchées avec le commanditaire — 2026-09-14
 
 | # | Sujet | Décision | ADR |

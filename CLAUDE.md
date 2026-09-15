@@ -29,10 +29,10 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | **LOT 6 terminé et vérifié** — `pnpm verify` vert. CHECKPOINT 1 validé le 2026-09-15 |
+| **Phase actuelle** | **LOT 7 terminé et vérifié** — `pnpm verify` vert. CHECKPOINT 1 (LOT 0 → 5) validé le 2026-09-15 |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | Objectifs : `objectives` · `objective_types` · **`metrics` (24 seedées)**, service `gap` pur qui refuse de comparer deux devises (ADR-046), onglet `Objectif → Réel → Écart` |
-| **Prochaine étape** | **LOT 7 — résultats & formulaires intelligents ⭐** (le lot à ne pas compresser) |
+| **Dernier jalon** | **La boucle est fermée** : `results` · `result_metrics` · `result_notes`, gabarits de formulaire **en base** (ADR-050), métriques dérivées qui s'abstiennent au lieu d'inventer un zéro (ADR-052), `objectives.current_value` recalculé **dans la transaction du résultat** (ADR-053), vue matérialisée `result_metrics_daily` (ADR-054), podium par projet classé selon la *direction* de la métrique |
+| **Prochaine étape** | **LOT 8 — fichiers, livrables, validation.** Aucune décision ouverte ne le bloque |
 | **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md` |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
@@ -206,7 +206,7 @@ pnpm db:up            # PostgreSQL local (Docker)
 pnpm db:generate      # générer la migration depuis le schéma
 pnpm db:migrate       # appliquer les migrations
 pnpm db:seed          # référentiel système + données de démo
-pnpm test             # tests unitaires
+pnpm test             # tests unitaires + couverture (seuil 90 % bloquant — ADR-055)
 pnpm test:integration # tests d'intégration (Testcontainers)
 pnpm test:e2e         # Playwright
 pnpm lint             # Biome (lint + format)
@@ -276,6 +276,17 @@ pnpm verify           # tout, dans l'ordre de la CI
 | ❌ Un scan `axe` sans vérifier quelle page est rendue | → il passe sur un 404 ; assertion du titre exact d'abord |
 | ❌ Une page `dev` gardée par `NODE_ENV` seul | → elle est pré-rendue au build ; utiliser `devPagesEnabled()` + `force-dynamic` |
 | ❌ Une entrée de menu vers une route inexistante | → `planned: true` dans `NAV_ENTRIES`, retiré par le lot qui la crée |
+| ❌ Une règle écrite dans `CLAUDE.md` sans commande qui échoue | → elle a déjà cessé d'être vraie. Le seuil de couverture est resté décoratif sept lots (ADR-055) |
+| ❌ Déclarer `coverage` dans un `projects[]` de Vitest | → silencieusement ignoré ; c'est une option **racine** (ADR-055) |
+| ❌ Une clé étrangère **composite** vers une table de référence partagée | → ses lignes système ont `organization_id NULL` : la contrainte est inapplicable, pas stricte. Clé **simple** (ADR-051) |
+| ❌ Un index d'**expression** comme clé unique d'une vue matérialisée | → `REFRESH … CONCURRENTLY` le refuse (« on one or more **columns** ») et retombe en silence sur le rafraîchissement bloquant. Colonnes nues + `NULLS NOT DISTINCT` (ADR-054) |
+| ❌ Lire l'état de la base dans le **texte** d'un message d'erreur | → il change de version en version et se **traduit**. Interroger le catalogue (`pg_matviews.ispopulated`) et choisir son chemin (ADR-054) |
+| ❌ Un repli qu'aucun test ne déclenche | → ce n'est pas un filet de sécurité, c'est une ligne qui rassure. Le faire exécuter par un test, ou le retirer |
+| ❌ Convertir une mesure en `number` avant `numeric(20,4)` | → un `double` n'a que 15 à 17 chiffres significatifs : la preuve s'arrondit. La garder en **chaîne** de bout en bout (ADR-050) |
+| ❌ Classer des performances sans lire la **direction** de la métrique | → un coût par lead de 1 s'afficherait comme la pire performance de la page (ADR-047) |
+| ❌ Naviguer juste après le `click()` qui soumet, en E2E | → l'action serveur est **abandonnée**, et la page rapporte honnêtement zéro résultat. Attendre la fermeture de la feuille |
+| ❌ `not.toContainText(x)` sur `main` quand un `<select>` liste `x` | → l'assertion ne peut jamais passer : elle mesure les options du filtre, pas les résultats |
+| ❌ Croire qu'un test E2E voit une modification du code source | → le runner sert le **build** existant ; une mutation ne compte qu'après `pnpm build` |
 | ❌ Commencer l'IA, les intégrations ou le suivi du temps | → **V2** (ADR-018) |
 
 ---

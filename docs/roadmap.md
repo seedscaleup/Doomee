@@ -184,21 +184,28 @@ inversée et celui d'une devise sans montant.
 
 ---
 
-## LOT 7 — Résultats & formulaires intelligents · *critère MVP 9* ⭐
-**Le lot qui fait de Doomee autre chose qu'un gestionnaire de tâches. Ne pas le compresser.**
+## LOT 7 — Résultats & formulaires intelligents · *critère MVP 9* ⭐ — ✅ **terminé**
+**Le lot qui fait de Doomee autre chose qu'un gestionnaire de tâches.**
 
-1. Schéma `results`, `result_metrics`, `result_notes`, `result_form_templates`, `result_form_fields`.
-2. Seed des 6 gabarits (Social Media Post, Ads Campaign, Website Build, Content Production, Event, Generic).
-3. **Moteur de rendu de formulaire piloté par la base** : le gabarit est choisi selon `action.action_type_id`, les champs sont rendus dynamiquement, validés par un schéma Zod **construit à l'exécution** depuis `result_form_fields`.
-4. Déclencheur `+ Add Results` proposé à la clôture d'une action (proposé, **non bloquant**).
-5. Saisie qualitative : les 8 types de notes, en accordéon, aucun champ obligatoire.
-6. `What did we learn?` / `What should we do next?`.
-7. Service `derived-metrics` (pur) : CTR, CPC, CPL, ROAS, ROI, taux de conversion.
-8. Recalcul de `objectives.current_value` dans la même transaction → la colonne « Résultat réel » du lot 6 se remplit.
-9. Module **Results** : vue consolidée, filtres client / projet / période / collaborateur / canal / type d'action, comparaison à la période précédente, meilleures et moins bonnes performances.
-10. Vue matérialisée `result_metrics_daily` + job de rafraîchissement.
+1. ✅ Schéma `results`, `result_metrics`, `result_notes`, `result_form_templates`, `result_form_fields` + RLS et isolation générée. `result_metrics` est **append-only** : `REVOKE UPDATE` pour `app_user`.
+2. ✅ Seed des 6 gabarits système (`social_post`, `ads_campaign`, `website`, `content`, `event`, `generic`), idempotent.
+3. ✅ **Moteur de rendu piloté par la base** (ADR-050) : le gabarit est choisi par `action.action_type_id`, les champs sont rendus dynamiquement et validés par un schéma Zod **strict construit à l'exécution**. Les nombres restent des **chaînes** jusqu'à `numeric(20,4)` — aucune mesure ne s'arrondit en chemin.
+4. ✅ `+ Ajouter des résultats` proposé à la clôture d'une action — **proposé, non bloquant**.
+5. ✅ Saisie qualitative : les 8 types de notes, aucun champ obligatoire.
+6. ✅ « Qu'est-ce qu'on en apprend ? » / « Qu'est-ce qu'on fait ensuite ? ».
+7. ✅ Service `derived-metrics` **pur** : CTR, CPC, CPL, ROAS, ROI, taux de conversion. Dénominateur nul → la métrique est **omise**, jamais mise à zéro (ADR-052).
+8. ✅ `objectives.current_value` recalculé **dans la transaction du résultat** (ADR-053) : la colonne « Résultat réel » du LOT 6 se remplit, et un `ROLLBACK` la laisse intacte.
+9. ✅ Module **Results** : vue consolidée, filtres client / projet / période / collaborateur / canal / type d'action, comparaison à la période précédente, **meilleures et moins bonnes performances** classées selon la *direction* de la métrique (`rankPerformances`, pur et testé).
+10. ✅ Vue matérialisée `result_metrics_daily` + `pnpm db:refresh-views` (ADR-054).
 
-✅ **Sortie** : E2E « terminer une action → saisir des résultats → voir l'écart à l'objectif se mettre à jour ». **Le moment où le produit devient démontrable.**
+✅ **Sortie** : E2E « terminer une action → saisir des résultats → voir l'écart à l'objectif se mettre
+à jour » ✅ FR + EN, plus le podium par projet et un filtre qui restreint **à la fois** la liste et
+les agrégats (vérifié par mutation).
+
+> Deux défauts trouvés **par** les tests et corrigés : un index d'expression qui empêchait
+> `REFRESH … CONCURRENTLY` sans rien dire, et un repli qui lisait l'état dans un message d'erreur
+> anglais. Voir ADR-054.
+> Le Health Score reste à calculer : il arrive avec les livrables et les insights.
 
 ---
 

@@ -1,3 +1,5 @@
+import { existsSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
 
 const PORT = 3100
@@ -5,10 +7,33 @@ const baseURL = `http://127.0.0.1:${PORT}`
 
 /**
  * Sandboxes and prebuilt CI images often ship a Chromium that does not match
- * the version Playwright would download. Point this at that binary instead of
- * fetching another one. Unset everywhere else, so CI behaviour is unchanged.
+ * the version Playwright would download, and Playwright then fails at LAUNCH
+ * with "Executable doesn't exist" — 130 tests failing in two milliseconds each,
+ * which looks like a catastrophic regression and is in fact a missing binary.
+ *
+ * `PLAYWRIGHT_CHROMIUM_PATH` still wins when set. Otherwise the pre-installed
+ * browser is LOOKED UP rather than assumed: the version suffix
+ * (`chromium-1194`) changes whenever the image is rebuilt, so hard-coding one
+ * only moves the failure to the next image. Nothing found means nothing
+ * overridden, and Playwright uses its own download exactly as it does in CI.
  */
-const chromiumPath = process.env.PLAYWRIGHT_CHROMIUM_PATH
+function findPreinstalledChromium(): string | undefined {
+  const explicit = process.env.PLAYWRIGHT_CHROMIUM_PATH
+  if (explicit) return explicit
+
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH
+  if (!root || !existsSync(root)) return undefined
+
+  const candidates = readdirSync(root)
+    .filter((entry) => entry.startsWith('chromium-'))
+    // Newest build first, so a stale copy left behind is not the one chosen.
+    .sort((a, b) => Number(b.split('-')[1] ?? 0) - Number(a.split('-')[1] ?? 0))
+    .map((entry) => join(root, entry, 'chrome-linux', 'chrome'))
+
+  return candidates.find((candidate) => existsSync(candidate))
+}
+
+const chromiumPath = findPreinstalledChromium()
 const launchOverride = chromiumPath ? { launchOptions: { executablePath: chromiumPath } } : {}
 
 export default defineConfig({

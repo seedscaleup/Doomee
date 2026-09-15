@@ -1,4 +1,4 @@
-import { isNull, sql } from 'drizzle-orm'
+import { eq, isNull, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { Client } from 'pg'
 import { uuidv7 } from 'uuidv7'
@@ -9,11 +9,14 @@ import {
   industries,
   metrics,
   objectiveTypes,
+  resultFormFields,
+  resultFormTemplates,
 } from '../schema'
 import { ACTION_CATEGORY_SEED, ACTION_TYPE_SEED, CHANNEL_SEED } from './action-taxonomies'
 import { INDUSTRY_SEED } from './industries'
 import { METRIC_SEED } from './metrics'
 import { OBJECTIVE_TYPE_SEED } from './objective-taxonomies'
+import { RESULT_FORM_SEED } from './result-forms'
 
 type TaxonomyEntry = { code: string; labels: { fr: string; en: string }; sortOrder: number }
 
@@ -71,6 +74,7 @@ export async function seedSystemData(connectionString: string): Promise<{ insert
     // they get their own pass rather than a wider shared type that only one
     // table would use.
     inserted += await seedMetrics(db)
+    inserted += await seedResultForms(db)
 
     return { inserted }
   } finally {
@@ -164,6 +168,88 @@ async function seedMetrics(db: SeedDb): Promise<number> {
   }
 
   return missing.length
+}
+
+/**
+ * The smart forms.
+ *
+ * A template is matched on its `code` among the system rows; its fields are
+ * replaced wholesale each run. That is safe precisely because templates are
+ * VERSIONED: a result recorded against version 1 keeps pointing at version 1,
+ * so correcting the field list of the current version cannot change what an
+ * old result meant.
+ */
+async function seedResultForms(db: SeedDb): Promise<number> {
+  const existing = await db
+    .select({ id: resultFormTemplates.id, code: resultFormTemplates.code })
+    .from(resultFormTemplates)
+    .where(isNull(resultFormTemplates.organizationId))
+
+  const byCode = new Map(existing.map((row) => [row.code, row.id]))
+
+  // The action types and metrics a form refers to by code, resolved once.
+  const types = await db
+    .select({ id: actionTypes.id, code: actionTypes.code })
+    .from(actionTypes)
+    .where(isNull(actionTypes.organizationId))
+  const typeByCode = new Map(types.map((row) => [row.code, row.id]))
+
+  const metricRows = await db
+    .select({ id: metrics.id, code: metrics.code })
+    .from(metrics)
+    .where(isNull(metrics.organizationId))
+  const metricByCode = new Map(metricRows.map((row) => [row.code, row.id]))
+
+  let inserted = 0
+
+  for (const template of RESULT_FORM_SEED) {
+    let templateId = byCode.get(template.code)
+
+    if (!templateId) {
+      templateId = uuidv7()
+      await db.insert(resultFormTemplates).values({
+        id: templateId,
+        organizationId: null,
+        actionTypeId: template.actionType ? (typeByCode.get(template.actionType) ?? null) : null,
+        code: template.code,
+        labels: template.labels,
+        version: 1,
+      })
+      inserted += 1
+    } else {
+      await db
+        .update(resultFormTemplates)
+        .set({
+          labels: template.labels,
+          actionTypeId: template.actionType ? (typeByCode.get(template.actionType) ?? null) : null,
+        })
+        .where(eq(resultFormTemplates.id, templateId))
+    }
+
+    await db.delete(resultFormFields).where(eq(resultFormFields.templateId, templateId))
+
+    await db.insert(resultFormFields).values(
+      template.fields.map((field, index) => ({
+        id: uuidv7(),
+        organizationId: null,
+        templateId: templateId as string,
+        key: field.key,
+        kind: field.kind,
+        labels: field.labels,
+        help: field.help ?? null,
+        metricId: field.metric ? (metricByCode.get(field.metric) ?? null) : null,
+        unit: field.unit ?? null,
+        isRequired: field.isRequired ?? false,
+        sortOrder: (index + 1) * 10,
+        options: field.options ?? null,
+        defaultValue: null,
+        min: field.min ?? null,
+        max: field.max ?? null,
+      })),
+    )
+  }
+
+  return inserted
 }
 
 if (process.argv[1]?.endsWith('seed/index.ts')) {

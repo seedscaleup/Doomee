@@ -36,6 +36,39 @@ export const actionStatus = pgEnum('action_status', [
   'cancelled',
 ])
 
+/**
+ * The eight kinds of qualitative note a result can carry.
+ *
+ * An enum rather than eight columns: reports iterate over them generically, and
+ * the list grows without a migration to every reader (docs/database.md §7).
+ */
+export const resultNoteKind = pgEnum('result_note_kind', [
+  'observation',
+  'audience_feedback',
+  'client_feedback',
+  'difficulty',
+  'positive',
+  'negative',
+  'learning',
+  'opportunity',
+])
+
+/**
+ * What a smart-form field IS, which decides how it renders and how it is
+ * validated. A state machine of sorts, so an enum and not a table (ADR-010).
+ */
+export const fieldKind = pgEnum('field_kind', [
+  'number',
+  'percent',
+  'currency',
+  'text',
+  'longtext',
+  'url',
+  'date',
+  'select',
+  'boolean',
+])
+
 export const objectiveStatus = pgEnum('objective_status', [
   'draft',
   'active',

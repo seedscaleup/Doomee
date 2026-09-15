@@ -67,10 +67,25 @@ describe('the project status machine', () => {
     expect(isActive('archived')).toBe(false)
   })
 
-  it('gives blocked and urgent the alarming tones', () => {
+  /**
+   * Every branch, not just the alarming ones. A tone is what tells a reader at
+   * a glance whether to worry, and an unmapped status falling through to the
+   * wrong colour is a lie told in colour (ADR-032).
+   */
+  it('gives every status its own tone', () => {
     expect(statusTone('blocked')).toBe('danger')
     expect(statusTone('done')).toBe('success')
+    expect(statusTone('in_progress')).toBe('progress')
+    expect(statusTone('in_review')).toBe('progress')
+    expect(statusTone('to_start')).toBe('neutral')
+    expect(statusTone('paused')).toBe('neutral')
+    expect(statusTone('archived')).toBe('neutral')
+  })
+
+  it('gives every priority its own tone', () => {
     expect(priorityTone('urgent')).toBe('danger')
+    expect(priorityTone('high')).toBe('warning')
+    expect(priorityTone('normal')).toBe('progress')
     expect(priorityTone('low')).toBe('neutral')
   })
 })

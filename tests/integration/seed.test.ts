@@ -10,6 +10,7 @@ import {
 import { INDUSTRY_SEED } from '@/db/seed/industries'
 import { METRIC_SEED } from '@/db/seed/metrics'
 import { OBJECTIVE_TYPE_SEED } from '@/db/seed/objective-taxonomies'
+import { RESULT_FORM_SEED } from '@/db/seed/result-forms'
 
 /** Every seeded taxonomy, checked by the same rules — a new one is one line. */
 const TAXONOMIES: readonly { table: string; entries: readonly TaxonomySeed[] }[] = [
@@ -21,7 +22,13 @@ const TAXONOMIES: readonly { table: string; entries: readonly TaxonomySeed[] }[]
   { table: 'metrics', entries: METRIC_SEED },
 ]
 
-const TOTAL = TAXONOMIES.reduce((sum, taxonomy) => sum + taxonomy.entries.length, 0)
+/**
+ * Every row a fresh seed inserts: the taxonomies above plus one per smart-form
+ * template. The form FIELDS are not counted — they are replaced wholesale each
+ * run rather than inserted once, which is what lets a field list be corrected.
+ */
+const TOTAL =
+  TAXONOMIES.reduce((sum, taxonomy) => sum + taxonomy.entries.length, 0) + RESULT_FORM_SEED.length
 
 import { startTestDatabase, type TestDatabase } from '../helpers/database'
 
@@ -102,6 +109,62 @@ describe('system data seed', () => {
     )
     // Same code as a system entry, different owner: the seed must leave it be.
     expect(rows[0]?.labels.fr).toBe('Le mien')
+  })
+
+  it('seeds the six smart forms and wires their fields to metrics', async () => {
+    await seedSystemData(db.adminUrl)
+
+    const { rows: templates } = await admin.query<{ code: string; version: number }>(
+      'SELECT code, version FROM result_form_templates WHERE organization_id IS NULL',
+    )
+    expect(templates).toHaveLength(RESULT_FORM_SEED.length)
+
+    for (const template of RESULT_FORM_SEED) {
+      const { rows } = await admin.query<{ key: string; metric_id: string | null }>(
+        `SELECT f.key, f.metric_id
+           FROM result_form_fields f
+           JOIN result_form_templates t ON t.id = f.template_id
+          WHERE t.code = $1 AND t.organization_id IS NULL
+          ORDER BY f.sort_order`,
+        [template.code],
+      )
+      expect(
+        rows.map((row) => row.key),
+        template.code,
+      ).toEqual(template.fields.map((field) => field.key))
+
+      // A field that names a metric must actually resolve to one, or the
+      // number it collects is recorded and never counted.
+      for (const field of template.fields.filter((item) => item.metric)) {
+        const row = rows.find((item) => item.key === field.key)
+        expect(row?.metric_id, `${template.code}.${field.key}`).toBeTruthy()
+      }
+    }
+  })
+
+  it('attaches exactly one fallback form, and it is the one without an action type', async () => {
+    await seedSystemData(db.adminUrl)
+
+    const { rows } = await admin.query<{ code: string }>(
+      `SELECT code FROM result_form_templates
+        WHERE organization_id IS NULL AND action_type_id IS NULL`,
+    )
+    // Every action type without a form of its own falls back here, so "record
+    // a result" is never unavailable.
+    expect(rows.map((row) => row.code)).toEqual(['generic'])
+  })
+
+  it('replaces the fields of a template rather than duplicating them', async () => {
+    await seedSystemData(db.adminUrl)
+    await seedSystemData(db.adminUrl)
+
+    const { rows } = await admin.query<{ n: string }>(
+      `SELECT count(*) AS n FROM result_form_fields f
+         JOIN result_form_templates t ON t.id = f.template_id
+        WHERE t.code = 'social_post' AND t.organization_id IS NULL`,
+    )
+    const expected = RESULT_FORM_SEED.find((item) => item.code === 'social_post')?.fields.length
+    expect(Number(rows[0]?.n)).toBe(expected)
   })
 
   it('gives every metric an aggregation and a direction', async () => {

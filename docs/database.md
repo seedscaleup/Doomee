@@ -460,7 +460,7 @@ Machine à états (garantie par le service, testée) :
 | `id` `organization_id` `project_id` | uuid | |
 | `action_id` | uuid NULL | un résultat peut être rattaché à une action ou au projet |
 | `objective_id` | uuid NULL | rattachement explicite |
-| `template_id` | uuid FK `result_form_templates` NULL | gabarit utilisé |
+| `template_id` | uuid FK **simple** `result_form_templates` NULL | gabarit utilisé — clé **non composite** : un gabarit système a `organization_id NULL` (ADR-051) |
 | `title` | text NULL | |
 | `recorded_for` | date NOT NULL | **date du résultat**, ≠ date de saisie |
 | `period_start` `period_end` | date NULL | pour les résultats de campagne |
@@ -478,6 +478,10 @@ Machine à états (garantie par le service, testée) :
 **UNIQUE (organization_id, result_id, field_key)**
 Index : `(organization_id, metric_id, recorded_for)`, `(organization_id, project_id, metric_id)`, `(organization_id, client_id, metric_id, recorded_for)`
 
+> **Append-only** : `REVOKE UPDATE ON result_metrics FROM app_user`. Une mesure est une **preuve** ;
+> on la corrige en enregistrant un nouveau résultat, jamais en réécrivant l'ancien. La suite
+> d'isolation le vérifie (`NO_UPDATE`), et un test attend `permission denied` sur un `UPDATE`.
+
 > **Pourquoi normaliser plutôt que stocker un JSONB** : le module Results doit filtrer et agréger par client,
 > projet, période, collaborateur, canal et type d'action. Un JSONB rendrait ces requêtes lentes et non typées.
 > Les dimensions sont dénormalisées sur la ligne pour éviter quatre jointures sur chaque dashboard.
@@ -486,6 +490,25 @@ Index : `(organization_id, metric_id, recorded_for)`, `(organization_id, project
 `id` · `organization_id` · `result_id` · `kind result_note_kind` · `body text` · `sort_order`
 → observations, retours public, retours client, difficultés, points positifs / négatifs, enseignements, opportunités.
 Une table plutôt que huit colonnes : les rapports itèrent dessus génériquement et la liste peut s'enrichir sans migration.
+
+### `result_metrics_daily` — vue **matérialisée** *(ADR-054)*
+```
+organization_id · metric_id · recorded_for · project_id · client_id · channel_id · action_type_id · currency
+→ total · average · minimum · maximum · samples
+```
+Agrégat **dérivé** de `result_metrics`, rafraîchi par un job (`pnpm db:refresh-views`), jamais dans
+une requête. `currency` fait partie de la clé : deux devises ne tombent jamais dans la même ligne
+(ADR-024).
+
+| | |
+|---|---|
+| `result_metrics_daily_key` | **UNIQUE** sur les **colonnes nues** + `NULLS NOT DISTINCT` — obligatoire pour `REFRESH … CONCURRENTLY`, qui **refuse** un index d'expression |
+| `result_metrics_daily_org_client_idx` | `(organization_id, client_id, metric_id, recorded_for)` |
+
+> ⚠️ **Non accordée à `app_user`.** Une vue matérialisée **ne peut pas** porter de RLS : elle
+> répondrait pour tous les tenants à la fois. Seul le migrateur la lit, pour les jobs de reporting,
+> qui passent l'organisation explicitement. `tests/integration/derived-views.test.ts` vérifie que
+> `app_user` reçoit `permission denied`.
 
 ### `insights`
 `id` · `organization_id` · `project_id` NULL · `client_id` NULL ·

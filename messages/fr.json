@@ -42,7 +42,8 @@
     "upload_too_large": "Ce fichier dépasse 2 Mo.",
     "upload_unsupported_type": "Format non accepté : PNG, JPEG ou WebP uniquement.",
     "project_owner_is_member": "Changez d'abord le responsable du projet.",
-    "blocked_reason_required": "Indiquez pourquoi cette action est bloquée."
+    "blocked_reason_required": "Indiquez pourquoi cette action est bloquée.",
+    "result_values_invalid": "Une valeur ne correspond pas à ce que le formulaire attend."
   },
   "notFound": {
     "title": "Page introuvable",
@@ -447,6 +448,10 @@
       "achieved": "{actor} a marqué {name} comme atteint",
       "missed": "{actor} a marqué {name} comme manqué",
       "deleted": "{actor} a supprimé l'objectif {name}"
+    },
+    "result": {
+      "recorded": "{actor} a saisi des résultats pour {name}",
+      "deleted": "{actor} a supprimé un résultat de {name}"
     }
   },
   "projects": {
@@ -586,6 +591,7 @@
     },
     "tabs": {
       "overview": "Informations",
+      "results": "Résultats",
       "comments": "Commentaires",
       "attachments": "Pièces jointes",
       "activity": "Historique"
@@ -733,5 +739,89 @@
       "confirm": "Supprimer"
     },
     "awaitingResults": "Les résultats rempliront cette colonne dès la première saisie."
+  },
+  "results": {
+    "title": "Résultats",
+    "description": "Ce que le travail a produit — et ce qu'on en apprend.",
+    "add": "+ Ajouter des résultats",
+    "addHint": "L'action est terminée. Qu'est-ce que ça a donné ?",
+    "later": "Plus tard",
+    "emptyTitle": "Aucun résultat pour l'instant",
+    "emptyDescription": "Un résultat, c'est le moment où le travail cesse d'être une activité pour devenir une preuve.",
+    "noResultsTitle": "Aucun résultat sur cette période",
+    "noResultsDescription": "Élargissez la période ou changez les filtres.",
+    "form": {
+      "title": "Saisir les résultats",
+      "template": "Formulaire : {name}",
+      "recordedFor": "Date du résultat",
+      "recordedForHint": "La date que le résultat concerne, pas celle de la saisie.",
+      "quantitative": "Chiffres",
+      "qualitative": "Observations",
+      "analysis": "Qu'est-ce qu'on en apprend ?",
+      "analysisHint": "Ce qui explique ces chiffres, en une ou deux phrases.",
+      "recommendation": "Qu'est-ce qu'on fait ensuite ?",
+      "recommendationHint": "La prochaine action que ces résultats suggèrent.",
+      "isClientVisible": "Visible par le client",
+      "optional": "Tout est facultatif : la moitié d'une mesure vaut mieux que rien.",
+      "failed": "Impossible d'enregistrer ces résultats.",
+      "invalid": "Une valeur ne correspond pas à ce que le formulaire attend."
+    },
+    "derived": {
+      "title": "Calculé",
+      "hint": "Dérivé des chiffres saisis, jamais stocké en double.",
+      "missing": "Il manque : {inputs}"
+    },
+    "notes": {
+      "observation": "Observation",
+      "audience_feedback": "Retour du public",
+      "client_feedback": "Retour du client",
+      "difficulty": "Difficulté",
+      "positive": "Point positif",
+      "negative": "Point négatif",
+      "learning": "Enseignement",
+      "opportunity": "Opportunité"
+    },
+    "columns": {
+      "title": "Résultat",
+      "project": "Projet",
+      "client": "Client",
+      "recordedFor": "Date",
+      "metrics": "Mesures",
+      "recordedBy": "Saisi par"
+    },
+    "filters": {
+      "from": "Du",
+      "to": "Au",
+      "project": "Projet",
+      "client": "Client",
+      "all": "Tous",
+      "channel": "Canal",
+      "actionType": "Type d'action",
+      "recordedBy": "Saisi par",
+      "reset": "Réinitialiser"
+    },
+    "totals": {
+      "title": "Sur la période",
+      "previous": "Période précédente",
+      "change": "{percent} %",
+      "noPrevious": "Pas de comparaison",
+      "samples": "{count} mesure(s)"
+    },
+    "untitled": "Résultat du {date}",
+    "delete": {
+      "action": "Supprimer",
+      "title": "Supprimer ce résultat ?",
+      "description": "Ses mesures cessent d'être comptées dans les objectifs.",
+      "confirm": "Supprimer"
+    },
+    "performance": {
+      "title": "Meilleures et moins bonnes performances",
+      "metric": "Métrique",
+      "best": "Ce qui marche",
+      "worst": "Ce qui coince",
+      "unranked": "Cette métrique n'a pas de sens meilleur : elle est affichée sans classement.",
+      "none": "Pas assez de projets mesurés sur cette période pour comparer.",
+      "samples": "{count} mesure(s)"
+    }
   }
 }

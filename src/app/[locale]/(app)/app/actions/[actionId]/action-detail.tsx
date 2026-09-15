@@ -24,10 +24,12 @@ import type {
   PersonOption,
   TaxonomyOption,
 } from '@/modules/actions/types'
+import type { FormTemplate, ResultRow } from '@/modules/results/types'
 import { DueDate } from '../due-date'
 import { ActionFormSheet } from './action-form-sheet'
 import { AttachmentsPanel } from './attachments-panel'
 import { CommentsPanel } from './comments-panel'
+import { ResultFormSheet } from './result-form-sheet'
 
 type ActivityEntry = {
   id: string
@@ -37,7 +39,7 @@ type ActivityEntry = {
   createdAt: string
 }
 
-const TABS = ['overview', 'comments', 'attachments', 'activity'] as const
+const TABS = ['overview', 'results', 'comments', 'attachments', 'activity'] as const
 type Tab = (typeof TABS)[number]
 
 export function ActionDetailScreen({
@@ -47,6 +49,8 @@ export function ActionDetailScreen({
   attachments,
   taxonomies,
   people,
+  form,
+  results,
   locale,
   canEdit,
   activity,
@@ -57,18 +61,21 @@ export function ActionDetailScreen({
   attachments: AttachmentRow[]
   taxonomies: { types: TaxonomyOption[]; categories: TaxonomyOption[]; channels: TaxonomyOption[] }
   people: PersonOption[]
+  /** The smart form for this action's type. Null when the reader cannot record. */
+  form: FormTemplate | null
+  results: ResultRow[]
   locale: Locale
   canEdit: boolean
   activity: ActivityEntry[]
 }) {
   const t = useTranslations('actions')
-  const tStatus = useTranslations('status.action')
   const tActivity = useTranslations('activity')
   const tCommon = useTranslations('common')
   const format = useFormatter()
   const router = useRouter()
 
   const [tab, setTab] = useState<Tab>('overview')
+  const [recording, setRecording] = useState(false)
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -130,23 +137,12 @@ export function ActionDetailScreen({
 
       {error ? <Alert tone="error">{error}</Alert> : null}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <StatusBadge label={tStatus(action.status)} tone={statusTone(action.status)} />
-        <DueDate action={action} />
-        <span className="text-label text-muted">{action.assigneeName ?? t('unassigned')}</span>
-      </div>
+      <RecordResultsPrompt
+        visible={action.status === 'done' && results.length === 0 && Boolean(form) && canEdit}
+        onRecord={() => setRecording(true)}
+      />
 
-      {action.blockedReason ? <Alert tone="warning">{action.blockedReason}</Alert> : null}
-
-      {canEdit && moves.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {moves.map((status) => (
-            <Button key={status} variant="secondary" onClick={() => move(status)}>
-              {tStatus(status)}
-            </Button>
-          ))}
-        </div>
-      ) : null}
+      <ActionSummary action={action} canEdit={canEdit} moves={moves} onMove={move} />
 
       <Tabs
         tabs={TABS.map((name) => ({ key: name, label: t(`tabs.${name}`) }))}
@@ -161,6 +157,14 @@ export function ActionDetailScreen({
           collaborators={collaborators}
           taxonomies={taxonomies}
           locale={locale}
+        />
+      ) : null}
+
+      {tab === 'results' ? (
+        <ResultsPanel
+          results={results}
+          canRecord={Boolean(form) && canEdit}
+          onRecord={() => setRecording(true)}
         />
       ) : null}
 
@@ -179,6 +183,19 @@ export function ActionDetailScreen({
           <EmptyState title={t('emptyTitle')} description={t('emptyDescription')} />
         )
       ) : null}
+
+      <ResultFormSheet
+        open={recording && canEdit}
+        projectId={action.projectId}
+        actionId={action.id}
+        template={form}
+        locale={locale}
+        onClose={() => setRecording(false)}
+        onSaved={() => {
+          setRecording(false)
+          router.refresh()
+        }}
+      />
 
       <ActionFormSheet
         open={editing && canEdit}
@@ -259,6 +276,130 @@ function Detail({ label, value }: { label: string; value?: string | null }) {
     <div className="flex flex-col gap-0.5">
       <dt className="text-caption uppercase tracking-wide text-subtle">{label}</dt>
       <dd className="text-label">{value && value.length > 0 ? value : '—'}</dd>
+    </div>
+  )
+}
+
+/** The results already recorded for this action, and the way to add one. */
+function ResultsPanel({
+  results,
+  canRecord,
+  onRecord,
+}: {
+  results: ResultRow[]
+  canRecord: boolean
+  onRecord: () => void
+}) {
+  const t = useTranslations('results')
+  const format = useFormatter()
+
+  if (results.length === 0) {
+    return (
+      <EmptyState
+        title={t('emptyTitle')}
+        description={t('emptyDescription')}
+        action={canRecord ? <Button onClick={onRecord}>{t('add')}</Button> : undefined}
+      />
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {canRecord ? (
+        <div className="flex justify-end">
+          <Button onClick={onRecord}>{t('add')}</Button>
+        </div>
+      ) : null}
+
+      <ul className="flex flex-col gap-2">
+        {results.map((result) => (
+          <li
+            key={result.id}
+            className="flex flex-col gap-1 rounded-doomee border border-border bg-surface px-3 py-3"
+          >
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">
+                {result.title ??
+                  t('untitled', {
+                    date: format.dateTime(new Date(result.recordedFor), { dateStyle: 'short' }),
+                  })}
+              </span>
+              <span className="text-caption text-subtle">
+                {t('totals.samples', { count: result.metricCount })}
+              </span>
+            </span>
+            {result.analysis ? <p className="text-label">{result.analysis}</p> : null}
+            {result.recommendation ? (
+              <p className="text-label text-muted">{result.recommendation}</p>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/** Status, deadline, owner — and the moves the machine allows from here. */
+function ActionSummary({
+  action,
+  canEdit,
+  moves,
+  onMove,
+}: {
+  action: ActionDetail
+  canEdit: boolean
+  moves: readonly ActionStatusValue[]
+  onMove: (status: ActionStatusValue) => void
+}) {
+  const t = useTranslations('actions')
+  const tStatus = useTranslations('status.action')
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-3">
+        <StatusBadge label={tStatus(action.status)} tone={statusTone(action.status)} />
+        <DueDate action={action} />
+        <span className="text-label text-muted">{action.assigneeName ?? t('unassigned')}</span>
+      </div>
+
+      {action.blockedReason ? <Alert tone="warning">{action.blockedReason}</Alert> : null}
+
+      {canEdit && moves.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {moves.map((status) => (
+            <Button key={status} variant="secondary" onClick={() => onMove(status)}>
+              {tStatus(status)}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+/**
+ * THE LOOP CLOSING.
+ *
+ * An action that is done and has produced nothing recorded is where the product
+ * stops being different from a task manager. So it asks — and only asks:
+ * dismissible, never blocking (roadmap LOT 7.4). Forcing a form on someone who
+ * has not got the numbers yet is how you collect zeros.
+ */
+function RecordResultsPrompt({ visible, onRecord }: { visible: boolean; onRecord: () => void }) {
+  const t = useTranslations('results')
+  const [dismissed, setDismissed] = useState(false)
+
+  if (!visible || dismissed) return null
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-doomee border border-doomee-yellow bg-doomee-yellow-soft px-4 py-3">
+      <span className="text-label font-medium">{t('addHint')}</span>
+      <span className="ml-auto flex gap-2">
+        <Button variant="ghost" onClick={() => setDismissed(true)}>
+          {t('later')}
+        </Button>
+        <Button onClick={onRecord}>{t('add')}</Button>
+      </span>
     </div>
   )
 }
