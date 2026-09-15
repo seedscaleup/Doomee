@@ -29,10 +29,10 @@ Si non, ce n'est pas prioritaire. Doomee n'est **pas** un gestionnaire de tâche
 
 | | |
 |---|---|
-| **Phase actuelle** | **LOT 8 terminé et vérifié** — `pnpm verify` vert. CHECKPOINT 1 (LOT 0 → 5) validé le 2026-09-15 |
+| **Phase actuelle** | **LOT 9 terminé et vérifié** — `pnpm verify` vert. CHECKPOINT 1 (LOT 0 → 5) validé le 2026-09-15 |
 | **Branche de travail** | `claude/laughing-keller-gd9tu8` |
-| **Dernier jalon** | Livrables : `deliverables` · `deliverable_versions` · `deliverable_reviews`, machine à états **à deux côtés** — seul le client valide, écrit trois fois et prouvé par mutation (ADR-056) ; versions et revues en **écriture seule** (ADR-058) |
-| **Prochaine étape** | **LOT 9 — portail client 🔒** (deuxième lot critique en sécurité). **O9 à trancher** : le client peut-il commenter une *action*, ou seulement un livrable et un rapport ? |
+| **Dernier jalon** | **Le portail client 🔒** : 19 tables exposées derrière trois barrières — droits **par colonne**, politiques RLS, vues `portal.*` (ADR-026, ADR-061) ; quatre portes d'écriture figées par un test (ADR-064) ; le client valide ses livrables depuis le portail et nulle part ailleurs. Une **vraie faille** trouvée par la suite de fuite et corrigée (ADR-062) |
+| **Prochaine étape** | **LOT 10 — insights ⭐**. **O9 tranché par défaut** (ADR-063), réversible, à confirmer |
 | **Décisions tranchées** | O1, O2, O3, O5, O7, O10 — voir §14 bis et `docs/decisions.md` |
 
 > ⚠️ **Mettre ce tableau à jour à la fin de chaque session.** C'est ce qui permet à la session
@@ -110,7 +110,9 @@ donc un import client fautif échoue au build au lieu de casser le bundle en sil
 1. AUTHENTIFICATION   session valide ?                        (Better Auth)
 2. AUTORISATION       rôle + portée                            (can(), PERMISSIONS, project_members, client_user_access)
 3. ISOLATION          lignes   : la base refuse si 1 et 2 sont buguées   (RLS, app_user / app_portal)
-                      colonnes : vues portal.* security_invoker          (ADR-026)
+                      colonnes : GRANT SELECT (colonnes) + vues portal.* security_invoker
+                                 (ADR-026, ADR-061) — une colonne interne est refusée
+                                 même dans un WHERE
 ```
 
 - La matrice `PERMISSIONS` est une **donnée typée**, pas des `if (role === 'manager')` dispersés.
@@ -276,6 +278,10 @@ pnpm verify           # tout, dans l'ordre de la CI
 | ❌ Un scan `axe` sans vérifier quelle page est rendue | → il passe sur un 404 ; assertion du titre exact d'abord |
 | ❌ Une page `dev` gardée par `NODE_ENV` seul | → elle est pré-rendue au build ; utiliser `devPagesEnabled()` + `force-dynamic` |
 | ❌ Une entrée de menu vers une route inexistante | → `planned: true` dans `NAV_ENTRIES`, retiré par le lot qui la crée |
+| ❌ Croire qu'une politique RLS dispense d'un `GRANT` | → une politique dit *quelles lignes*, un grant dit *si l'on peut demander*. `security_invoker` exige les deux (ADR-061) |
+| ❌ `EXISTS (SELECT … FROM autre_table)` dans une politique | → c'est une requête ordinaire, exécutée avec les droits de l'appelant : elle force à élargir les grants. Une fonction `SECURITY DEFINER` qui renvoie un booléen (ADR-061) |
+| ❌ Prendre `is_client_visible` pour une portée client | → il dit « peut être montré à un client », pas « à **ce** client ». Un fichier partagé fuitait chez le voisin (ADR-062) |
+| ❌ Un paramètre **lié** vers une colonne `enum` | → PostgreSQL ne peut pas inférer le type : *« is of type X but expression is of type text »*. Caster `${v}::mon_enum` (ADR-064) |
 | ❌ Assertion sur l'enveloppe « Failed query » de Drizzle | → elle passe pour **n'importe quel** échec, y compris « l'écriture a réussi et autre chose a cassé ». Lire la `cause` |
 | ❌ Un drapeau `is_client_visible` sans condition d'**état** | → un brouillon coché par erreur resterait coché. Consentement **et** maturité (ADR-057) |
 | ❌ Une règle écrite dans `CLAUDE.md` sans commande qui échoue | → elle a déjà cessé d'être vraie. Le seuil de couverture est resté décoratif sept lots (ADR-055) |
@@ -316,7 +322,9 @@ sous-tâches, dépendances, Gantt · paiement en ligne · SSO/SAML · applicatio
 | **Modèle de rôles** | **6 rôles validés** : `platform_admin` (plateforme) · `owner` · `direction` · `manager` · `collaborator` · `client`. **`owner` est un rôle d'organisation et ne remplace pas le Super Admin** | ADR-012 |
 
 Restent ouvertes, à traiter dans leur lot : **O4** (export Excel/CSV) · **O6** (gamification) ·
-**O8** (rétention après résiliation) · **O9** (commentaire client sur une action). Voir `docs/decisions.md`.
+**O8** (rétention après résiliation). **O9** (commentaire client sur une action) est **tranchée par défaut**
+au LOT 9 — livrable et projet seulement, choix restrictif et réversible (ADR-063), à confirmer.
+Voir `docs/decisions.md`.
 Aucune ne bloque le LOT 1.
 
 ---

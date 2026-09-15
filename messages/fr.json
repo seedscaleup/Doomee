@@ -228,8 +228,7 @@
     "invalid": "Cette invitation est invalide ou a expiré.",
     "signInFirst": "Connectez-vous ou créez un compte pour accepter.",
     "clientTitle": "Votre espace client",
-    "clientBody": "Cette invitation vous donne accès au suivi de votre compte.",
-    "clientAccepted": "Accès confirmé. Vous recevrez un lien dès qu'un élément est partagé avec vous."
+    "clientBody": "Cette invitation vous donne accès au suivi de votre compte."
   },
   "roles": {
     "owner": "Propriétaire",
@@ -930,6 +929,86 @@
       "title": "Supprimer ce livrable ?",
       "description": "Ses versions et son historique de validation partent avec lui.",
       "confirm": "Supprimer"
+    }
+  },
+  "portal": {
+    "title": "Espace client",
+    "shellLabel": "Navigation du portail",
+    "switchAccount": "Compte",
+    "nav": {
+      "overview": "Aperçu",
+      "projects": "Projets",
+      "deliverables": "Livrables",
+      "results": "Résultats",
+      "reports": "Rapports",
+      "messages": "Messages"
+    },
+    "overview": {
+      "title": "Aperçu",
+      "description": "Où en est votre projet, et ce qui attend votre retour.",
+      "awaiting": "En attente de votre validation",
+      "awaitingCount": "{count} livrable(s) attendent votre décision",
+      "nothingWaiting": "Rien n’attend votre décision pour le moment.",
+      "projects": "Vos projets",
+      "recent": "Dernières nouvelles",
+      "noActivity": "Aucune activité récente.",
+      "progress": "{percent} %"
+    },
+    "projects": {
+      "title": "Projets",
+      "description": "Ce sur quoi nous travaillons pour vous.",
+      "empty": "Aucun projet partagé pour l’instant.",
+      "back": "← Retour aux projets",
+      "objectives": "Objectifs",
+      "noObjectives": "Aucun objectif partagé.",
+      "target": "Cible",
+      "actual": "Réel",
+      "period": "Période"
+    },
+    "deliverables": {
+      "title": "Livrables",
+      "description": "Ce que nous vous livrons, et ce qui attend votre retour.",
+      "empty": "Aucun livrable partagé pour l’instant.",
+      "back": "← Retour aux livrables",
+      "version": "Version {version}",
+      "noVersion": "Aucune version",
+      "open": "Ouvrir",
+      "download": "Télécharger",
+      "sentOn": "Envoyé le {date}",
+      "decide": "Votre décision",
+      "approve": "✓ Valider",
+      "requestChanges": "↻ Demander des modifications",
+      "comment": "Votre commentaire",
+      "commentRequired": "Dites-nous ce qui doit être modifié.",
+      "decided": "Merci, votre décision est enregistrée.",
+      "history": "Historique",
+      "noHistory": "Aucune décision pour l’instant.",
+      "internalReview": "Validation interne",
+      "yourDecision": "Votre décision",
+      "failed": "Impossible d’enregistrer votre décision."
+    },
+    "results": {
+      "title": "Résultats",
+      "description": "Ce que le travail a produit.",
+      "empty": "Aucun résultat partagé pour l’instant.",
+      "learned": "Ce qu’on en apprend",
+      "next": "Ce qu’on fait ensuite",
+      "on": "Le {date}"
+    },
+    "reports": {
+      "title": "Rapports",
+      "description": "Vos rapports périodiques.",
+      "empty": "Aucun rapport pour l’instant.",
+      "comingSoon": "Les rapports arrivent prochainement."
+    },
+    "messages": {
+      "title": "Messages",
+      "description": "Vos échanges avec l’équipe.",
+      "empty": "Aucun message pour l’instant.",
+      "placeholder": "Écrire un message…",
+      "send": "Envoyer",
+      "failed": "Impossible d’envoyer ce message.",
+      "onlyShared": "Vos messages sont visibles par l’équipe."
     }
   }
 }

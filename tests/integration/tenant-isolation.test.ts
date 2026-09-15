@@ -560,17 +560,35 @@ describe('tenant isolation', () => {
 
   it('refuses a portal context without any client id', async () => {
     await expect(
-      withPortal({ organizationId: orgA.id, clientIds: [] }, async () => 'reached'),
+      withPortal(
+        { organizationId: orgA.id, clientIds: [], userId: newId() },
+        async () => 'reached',
+      ),
     ).rejects.toThrow(/at least one client id/)
   })
 
+  /**
+   * The portal's two write policies attribute the row to `app.user_id`. A
+   * context without one would make every client write fail deep inside a
+   * policy; refusing up front says what is actually missing.
+   */
+  it('refuses a portal context without an acting user', async () => {
+    await expect(
+      withPortal(
+        { organizationId: orgA.id, clientIds: [newId()], userId: '' },
+        async () => 'reached',
+      ),
+    ).rejects.toThrow(/acting user id/)
+  })
+
   it('gives the portal role no access to base tables (ADR-026)', async () => {
-    // The portal reads portal.* views only. Until those views exist (LOT 9),
-    // the correct behaviour is a hard permission denial, not a silent result.
-    // Drizzle wraps the driver error, so assert on the cause: an empty result
-    // set and a denied query must never be confused.
-    const error = await withPortal({ organizationId: orgA.id, clientIds: [newId()] }, (tx) =>
-      tx.execute(sql.raw('SELECT id FROM memberships')),
+    // The portal reads portal.* views only. Naming a base table is a hard
+    // permission denial, not a silent empty result. Drizzle wraps the driver
+    // error, so assert on the cause: an empty result set and a denied query
+    // must never be confused.
+    const error = await withPortal(
+      { organizationId: orgA.id, clientIds: [newId()], userId: newId() },
+      (tx) => tx.execute(sql.raw('SELECT id FROM memberships')),
     ).catch((caught: unknown) => caught)
 
     expect(error).toBeInstanceOf(Error)

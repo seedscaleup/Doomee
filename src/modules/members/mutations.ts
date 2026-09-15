@@ -275,12 +275,20 @@ export async function acceptInvitation(token: string): Promise<AcceptedInvitatio
       .where(eq(invitations.id, invitation.id))
   })
 
-  // A client contact has no internal workspace to make active, and pointing a
-  // session at one would only invite requireActor to refuse it later.
-  if (target.role === 'client') return { organizationId, kind: 'client' }
-
+  /**
+   * The active organisation is set for BOTH kinds, and for the same reason: it
+   * is what scopes the next request. A client's portal session reads
+   * `activeOrganizationId` exactly as an internal one does — without it,
+   * `requirePortalActor` finds no organisation and answers 404 to the very
+   * person who just accepted the invitation.
+   *
+   * It does not open the internal workspace to them: `requireActor` refuses a
+   * `client` membership outright, and the (app) layout filters those
+   * memberships out before it ever renders.
+   */
   await setActiveOrganization(session.userId, organizationId)
-  return { organizationId, kind: 'internal' }
+
+  return { organizationId, kind: target.role === 'client' ? 'client' : 'internal' }
 }
 
 export type AcceptedInvitation = {

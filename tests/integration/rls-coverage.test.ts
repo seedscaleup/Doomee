@@ -88,14 +88,105 @@ describe('row level security coverage', () => {
     expect(missing).toEqual([])
   })
 
-  it('app_portal has no privilege on any base table', async () => {
+  /**
+   * ==========================================================================
+   * ADR-026, the guarantee that cannot bend: the portal READS the portal.*
+   * views and nothing else.
+   *
+   * One SELECT grant on one base table would hand a client every internal
+   * column the views deliberately omit — the health score, the budget, the
+   * time spent. This assertion is absolute and stays absolute.
+   * ==========================================================================
+   */
+  it('app_portal can read no base table at all', async () => {
+    const { rows } = await admin.query<{ table_name: string }>(
+      `SELECT table_name FROM information_schema.role_table_grants
+        WHERE grantee = 'app_portal' AND table_schema = 'public'
+          AND privilege_type IN ('SELECT', 'REFERENCES', 'TRIGGER')`,
+    )
+    expect(rows).toEqual([])
+  })
+
+  /**
+   * The portal WRITES through exactly two doors, and the list is pinned here.
+   *
+   * A write needs a base table: a view over a filtered table is not a sane
+   * insert target, and it is the WITH CHECK clause that makes the write safe,
+   * not the view. So the grants exist — and this test is what stops a third
+   * one appearing without anyone noticing.
+   */
+  it('app_portal writes through exactly the declared doors', async () => {
     const { rows } = await admin.query<{ table_name: string; privilege_type: string }>(
       `SELECT table_name, privilege_type FROM information_schema.role_table_grants
-        WHERE grantee = 'app_portal' AND table_schema = 'public'`,
+        WHERE grantee = 'app_portal' AND table_schema = 'public'
+        ORDER BY table_name, privilege_type`,
     )
-    // ADR-026: the portal reads portal.* views only. A grant here would let a
-    // client read internal columns the views deliberately omit.
-    expect(rows).toEqual([])
+
+    expect(rows).toEqual([
+      // The audit trail is one trail: a client's decision belongs in the same
+      // log as everything else, written in the same transaction. INSERT only —
+      // a portal session that could SELECT here would read every tenant's
+      // history at once, because audit_logs deliberately spans tenants.
+      { table_name: 'audit_logs', privilege_type: 'INSERT' },
+      // A client's own comment, always shared, always attributed to them.
+      { table_name: 'comments', privilege_type: 'INSERT' },
+      // A client's own decision on a deliverable that was sent to them.
+      { table_name: 'deliverable_reviews', privilege_type: 'INSERT' },
+    ])
+  })
+
+  /**
+   * The decision moves the deliverable, so the portal updates that one row —
+   * per COLUMN, which is the one place PostgreSQL's column grants are the
+   * right tool. A client can set the status and the approval stamp, and can
+   * touch nothing else on the row: not is_client_visible, not the title, not
+   * the owner.
+   */
+  it('lets the portal update only the columns a client decision touches', async () => {
+    const { rows } = await admin.query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.column_privileges
+        WHERE grantee = 'app_portal' AND table_schema = 'public'
+          AND table_name = 'deliverables' AND privilege_type = 'UPDATE'
+        ORDER BY column_name`,
+    )
+
+    expect(rows.map((row) => row.column_name)).toEqual([
+      'approved_at',
+      'approved_by',
+      'status',
+      'updated_at',
+    ])
+  })
+
+  /**
+   * The audit trail is append-only for the portal, and unreadable by it. This
+   * is asserted on its own because it is the one grant whose SELECT would be
+   * catastrophic: `audit_logs` carries no tenant policy for reads.
+   */
+  it('lets the portal append to the audit trail but never read it', async () => {
+    const { rows } = await admin.query<{ privilege_type: string }>(
+      `SELECT privilege_type FROM information_schema.role_table_grants
+        WHERE grantee = 'app_portal' AND table_name = 'audit_logs'
+        ORDER BY privilege_type`,
+    )
+    expect(rows.map((row) => row.privilege_type)).toEqual(['INSERT'])
+  })
+
+  /**
+   * `deliverables` is the ONLY row the portal may rewrite, anywhere.
+   *
+   * (INSERT on a whole table registers per column too, so this looks at UPDATE
+   * and DELETE — the verbs that change something that already exists. The two
+   * INSERT doors are pinned by the test above.)
+   */
+  it('lets the portal rewrite nothing but a deliverable’s decision', async () => {
+    const { rows } = await admin.query<{ table_name: string; privilege_type: string }>(
+      `SELECT DISTINCT table_name, privilege_type FROM information_schema.column_privileges
+        WHERE grantee = 'app_portal' AND table_schema = 'public'
+          AND privilege_type IN ('UPDATE', 'DELETE')
+        ORDER BY table_name, privilege_type`,
+    )
+    expect(rows).toEqual([{ table_name: 'deliverables', privilege_type: 'UPDATE' }])
   })
 
   it('app_user cannot touch the identity tables', async () => {

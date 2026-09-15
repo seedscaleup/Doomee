@@ -3,12 +3,12 @@ import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { memberships, users } from '@/db/schema'
+import { clientUserAccess, memberships, users } from '@/db/schema'
 import { withTenant } from '@/db/tenant'
 import { isLocale } from '@/i18n/routing'
 import { auth } from '@/lib/auth/config'
 import { AppError } from '@/lib/errors/app-error'
-import type { Actor } from '@/lib/permissions'
+import type { Actor, ClientActor } from '@/lib/permissions'
 
 /**
  * Resolves WHO is acting and WHICH tenant they are acting in.
@@ -113,4 +113,76 @@ export async function requireActor(): Promise<Actor> {
     isPlatformAdmin: membership.isPlatformAdmin,
     projectIds: [],
   }
+}
+
+/**
+ * ============================================================================
+ * The PORTAL actor.
+ *
+ * A client contact is not an internal member with fewer rights — it is a
+ * different kind of actor, and `requireActor` refuses one outright. This is
+ * the only door into the portal.
+ *
+ * The client ids come from `client_user_access`, read inside a tenant
+ * transaction so the lookup is itself subject to row level security. They then
+ * become the portal transaction's scope: whatever this returns is exactly what
+ * the database will let the session see (ADR-023 — there can be several).
+ * ============================================================================
+ */
+export async function requirePortalActor(): Promise<ClientActor> {
+  const session = await requireSession()
+
+  if (!session.activeOrganizationId) {
+    throw new AppError('not_found', 'errors.not_found')
+  }
+
+  const organizationId = session.activeOrganizationId
+
+  const rows = await withTenant({ organizationId }, async (db) => {
+    const membership = await db
+      .select({ role: memberships.role, status: memberships.status, locale: users.locale })
+      .from(memberships)
+      .innerJoin(users, eq(users.id, memberships.userId))
+      .where(
+        and(eq(memberships.organizationId, organizationId), eq(memberships.userId, session.userId)),
+      )
+      .limit(1)
+
+    // Sequential: one transaction, one connection, one query at a time
+    // (ADR-044).
+    const access = await db
+      .select({ clientId: clientUserAccess.clientId })
+      .from(clientUserAccess)
+      .where(eq(clientUserAccess.userId, session.userId))
+
+    return { membership: membership[0], access }
+  })
+
+  // 404-shaped throughout. An internal member reaching a portal URL, and a
+  // client whose access was revoked, get the same answer as a stranger: never
+  // confirm what exists.
+  if (rows.membership?.status !== 'active') throw new AppError('not_found', 'errors.not_found')
+  if (rows.membership.role !== 'client') throw new AppError('not_found', 'errors.not_found')
+
+  const clientIds = rows.access.map((row) => row.clientId)
+  // A contact with no client account has nothing to be shown. Letting them
+  // through with an empty scope would open a portal transaction that the
+  // database refuses anyway — failing here says what is actually wrong.
+  if (clientIds.length === 0) throw new AppError('not_found', 'errors.not_found')
+
+  return {
+    kind: 'client',
+    userId: session.userId,
+    organizationId,
+    role: 'client',
+    locale: isLocale(rows.membership.locale) ? rows.membership.locale : 'fr',
+    clientIds,
+  }
+}
+
+/** For portal pages: an anonymous visitor is sent to sign-in, not to a 500. */
+export async function requirePortalPageSession(locale: string): Promise<Session> {
+  const session = await getSession()
+  if (!session) redirect(`/${locale}/sign-in`)
+  return session
 }

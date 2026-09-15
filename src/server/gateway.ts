@@ -3,11 +3,11 @@ import 'server-only'
 import { uuidv7 } from 'uuidv7'
 import type { z } from 'zod'
 import { auditLogs } from '@/db/schema'
-import { type TenantDb, withTenant } from '@/db/tenant'
+import { type TenantDb, withPortal, withTenant } from '@/db/tenant'
 import { AppError, isAppError } from '@/lib/errors/app-error'
 import { logger } from '@/lib/logger'
-import { type Actor, can, type Permission } from '@/lib/permissions'
-import { requireActor } from './context'
+import { type Actor, type ClientActor, can, type Permission } from '@/lib/permissions'
+import { requireActor, requirePortalActor } from './context'
 
 /**
  * ============================================================================
@@ -86,8 +86,14 @@ async function authorize(permission: Permission): Promise<Actor> {
   return actor
 }
 
+/**
+ * Typed on what it actually READS — the schema — and not on the whole
+ * definition. The internal and the portal gateway share it, and a parameter
+ * typed as the internal `Definition` would drag `HandlerContext` in and make
+ * a portal handler unassignable for no reason.
+ */
 function parseInput<TRaw, TParsed>(
-  definition: Definition<TRaw, TParsed, unknown>,
+  definition: { input?: z.ZodType<TParsed, TRaw> },
   raw: unknown,
 ): TParsed {
   if (!definition.input) return raw as TParsed
@@ -135,6 +141,91 @@ export function defineAction<TRaw, TParsed, TOutput>(
       logger.error(
         { err: error, permission: definition.permission, organizationId: actor.organizationId },
         'action failed',
+      )
+      throw new AppError('internal', 'errors.internal')
+    }
+  }
+}
+
+/**
+ * ============================================================================
+ * THE PORTAL GATEWAY.
+ *
+ * Same discipline, different role and different pool. Everything a client
+ * contact does goes through one of these two, and there is no other path.
+ *
+ * The differences from the internal gateway are all deliberate:
+ *
+ *   · the actor is a ClientActor — `requireActor` refuses a client outright,
+ *     so the two can never be confused at a call site;
+ *   · the transaction runs as `app_portal`, which holds no rights on any
+ *     column the portal.* views do not expose (ADR-026, ADR-061);
+ *   · the handler receives the client ids, because "which of my accounts" is
+ *     a question the portal asks constantly and the database answers anyway.
+ *
+ * The audit trail is the same trail: a client approving a deliverable is one
+ * of the most consequential acts in the product, and it belongs in the same
+ * log as everything else.
+ * ============================================================================
+ */
+export type PortalContext = {
+  actor: ClientActor
+  db: TenantDb
+  audit: (entry: AuditEntry) => Promise<void>
+}
+
+type PortalDefinition<TRaw, TParsed, TOutput> = {
+  input?: z.ZodType<TParsed, TRaw>
+  permission: Permission
+  handler: (input: TParsed, context: PortalContext) => Promise<TOutput>
+}
+
+async function authorizePortal(permission: Permission): Promise<ClientActor> {
+  const actor = await requirePortalActor()
+  if (!can(actor, permission)) throw new AppError('not_found', 'errors.not_found')
+  return actor
+}
+
+export function definePortalQuery<TRaw, TParsed, TOutput>(
+  definition: PortalDefinition<TRaw, TParsed, TOutput>,
+) {
+  return async (raw?: TRaw): Promise<TOutput> => {
+    const actor = await authorizePortal(definition.permission)
+    const input = parseInput(definition, raw)
+
+    return withPortal(
+      {
+        organizationId: actor.organizationId,
+        clientIds: actor.clientIds,
+        userId: actor.userId,
+      },
+      (db) => definition.handler(input, { actor, db, audit: auditWriter(db, actor) }),
+    )
+  }
+}
+
+export function definePortalAction<TRaw, TParsed, TOutput>(
+  definition: PortalDefinition<TRaw, TParsed, TOutput>,
+) {
+  return async (raw?: TRaw): Promise<TOutput> => {
+    const actor = await authorizePortal(definition.permission)
+    const input = parseInput(definition, raw)
+
+    try {
+      return await withPortal(
+        {
+          organizationId: actor.organizationId,
+          clientIds: actor.clientIds,
+          userId: actor.userId,
+        },
+        (db) => definition.handler(input, { actor, db, audit: auditWriter(db, actor) }),
+      )
+    } catch (error) {
+      if (isAppError(error)) throw error
+
+      logger.error(
+        { err: error, permission: definition.permission, organizationId: actor.organizationId },
+        'portal action failed',
       )
       throw new AppError('internal', 'errors.internal')
     }

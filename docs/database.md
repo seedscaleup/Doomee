@@ -853,6 +853,39 @@ accès restreint applicativement, jamais atteignables par le pool portail.
 
 ---
 
+## 13 bis. Le schéma `portal` — ce que voit un client *(LOT 9)*
+
+Trois barrières, dont chacune tiendrait seule :
+
+| | |
+|---|---|
+| **1. Aucun droit de trop** | `app_portal` n'a **aucun** `SELECT` sur une table de `public`, sauf sur les **colonnes** exactes que les vues sélectionnent (ADR-061). `SELECT *`, une colonne interne, ou une colonne interne dans un `WHERE` : refusés. |
+| **2. Les lignes** | Une politique `portal_read` par table exposée. Tout est **ET**é avec l'organisation, puis avec la portée client. |
+| **3. Les colonnes** | Les vues `portal.*`, `security_invoker = true`, à colonnes explicites (ADR-026). |
+
+**Absents des vues, définitivement** : `health_score`, `health_status`,
+`budget_amount`, `spent_minutes`, `estimated_minutes`, `blocked_reason`,
+`account_team_note`, `storage_key`, `email`, `is_platform_admin`, et tous les
+compteurs internes.
+
+**Les fonctions de visibilité** (`SECURITY DEFINER`, `search_path` fixé, révoquées de `PUBLIC`) :
+
+| Fonction | Répond à |
+|---|---|
+| `portal_client_ids()` / `portal_organization_id()` | la portée de la session |
+| `portal_sees_project(org, id)` | « ce projet est-il partagé avec ce client ? » — la règle écrite **une fois** |
+| `portal_sees_deliverable(org, id)` | visible **et** mûr (ADR-057) |
+| `portal_sees_result(org, id)` · `portal_sees_file(org, id)` | par leur route (ADR-062) |
+| `portal_awaits_decision(org, id)` | « attend-il *sa* décision ? » |
+| `portal_file_key(org, id)` | la clé de stockage, **pour le serveur** qui signe le lien — jamais pour le navigateur |
+
+**Les quatre portes d'écriture** : `comments` (INSERT), `deliverable_reviews`
+(INSERT), `deliverables` (`UPDATE` sur 4 colonnes), `audit_logs` (INSERT, et
+**jamais** `SELECT`). Chacune porte un `WITH CHECK` qui lit `app.user_id` et
+`app.client_ids` — rien n'est pris de la charge utile (ADR-064).
+
+---
+
 ## 14. Index principaux
 
 ```sql

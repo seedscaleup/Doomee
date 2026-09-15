@@ -207,7 +207,9 @@ test.describe('inviting a client contact to the portal', () => {
 
     await contactPage.goto(invitationUrl)
     await contactPage.getByRole('button', { name: fr.invitation.accept }).click()
-    await expect(contactPage.getByRole('main')).toContainText(fr.invitation.clientAccepted)
+    // Accepting lands them IN the portal. "You now have access" and having it
+    // are not the same thing.
+    await expect(contactPage).toHaveURL(/\/fr\/portal$/)
 
     // The decisive assertion: a client membership is not a way in. 404, not
     // 403 — the internal workspace does not confirm that it exists.

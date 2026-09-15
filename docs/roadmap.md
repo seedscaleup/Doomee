@@ -231,26 +231,32 @@ livrable d'une autre organisation.
 
 ---
 
-## LOT 9 — Portail client · *critères MVP 8, 13* 🔒
+## LOT 9 — Portail client · *critères MVP 8, 13* 🔒 — ✅ **terminé**
 **Deuxième lot critique en sécurité.**
 
-1. `PortalShell`, routes `(portal)`, garde de rôle, **pool `app_portal`**, sélecteur d'organisation pour les contacts multi-comptes (ADR-023).
-2. Politiques RLS portail sur les 15 tables exposées + **vues `portal.*` à colonnes explicites** (ADR-026) ; `REVOKE ALL ON SCHEMA public FROM app_portal`.
-3. Overview : avancement, santé, prochaines étapes, notifications.
-4. Projects · Deliverables (**`✓ Approve` / `↻ Request changes` + commentaire**) · Results · Reports (vide jusqu'au lot 12) · Messages (fil de commentaires partagés).
-5. Parcours d'invitation client (lien magique) + définition du mot de passe.
-6. Optimisation mobile prioritaire.
+1. ✅ `PortalShell` (mobile d'abord : barre basse en dessous de `sm`, rail au-dessus), routes `(portal)`, **garde de rôle dans le layout** — jamais dans le middleware (D1) —, **pool `app_portal`** séparé, sélecteur de compte pour les contacts multi-comptes (ADR-023).
+2. ✅ Politiques RLS portail sur les **19 tables exposées** + **vues `portal.*` à colonnes explicites** (ADR-026), `REVOKE ALL ON SCHEMA public FROM app_portal` (déjà au LOT 1) **et droits `SELECT` par colonne** miroir des vues (ADR-061).
+3. ✅ Aperçu : ce qui attend la décision du client **en premier**, avancement, projets, dernières nouvelles partagées.
+4. ✅ Projects · Deliverables (**`✓ Valider` / `↻ Demander des modifications` + commentaire obligatoire**) · Results · Reports (vide jusqu'au LOT 12) · Messages.
+5. ✅ Parcours d'invitation client : accepter **dépose le contact dans le portail**, organisation active comprise.
+6. ✅ Optimisation mobile : aucun débordement horizontal à 375 px, mesuré sur les cinq écrans.
 
-🔒 **Tests obligatoires**
-- Pour chaque table exposée : un client ne voit ni `is_client_visible = false`, ni un autre client, ni une autre organisation.
-- Un client authentifié atteignant une URL interne reçoit **404** (ne jamais confirmer l'existence).
-- Aucun commentaire `internal` n'apparaît jamais dans une réponse du portail.
-- Aucun champ interne n'est sérialisé vers le portail : **`health_score`** (ADR-025), budget, temps estimé/passé, compteurs de retard, charge, performance individuelle, `created_by`.
-- `app_portal` n'a **aucun droit** sur le schéma `public` — test bloquant.
-- Un contact des organisations A et B ne voit jamais A depuis B (ADR-023).
-- Test à deux navigateurs : le manager envoie, le client valide, le manager est notifié.
+🔒 **Tests obligatoires — faits**
+- ✅ `tests/integration/portal-leak.test.ts` (**109 assertions**) : quatre mondes construits (client visible / interne / autre client / autre organisation), chaque vue ne doit en montrer **qu'un**.
+- ✅ Aucune colonne interdite dans le schéma `portal`, vérifié **depuis le catalogue** et non depuis une liste.
+- ✅ Dix couples table/colonne internes refusés en lecture directe, dans un `WHERE`, et par `SELECT *`.
+- ✅ Un client authentifié atteignant une URL interne reçoit **404** ; un membre interne sur le portail, **404** aussi.
+- ✅ Les quatre portes d'écriture, figées par un test ; six tentatives d'écriture illégitimes refusées **par la base**.
 
-✅ **Sortie** : E2E « le client valide un livrable » + « le client suit son projet ».
+✅ **Sortie** : E2E à **deux navigateurs** — l'agence partage, le client valide, l'agence voit la
+décision sur la bonne version.
+
+> 🔎 **Une vraie faille trouvée par la suite de fuite**, quinze minutes après avoir été écrite :
+> `files` n'était filtré que par l'organisation, donc un client voyait les fichiers partagés d'un
+> autre client. Corrigé (ADR-062) et vérifié par mutation.
+>
+> ⚠️ **O9 tranché par défaut** (ADR-063) : le client commente un **livrable** et un **projet**, pas
+> une action. Choix restrictif et **réversible** — à confirmer par le commanditaire.
 
 ---
 

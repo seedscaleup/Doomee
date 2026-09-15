@@ -32,6 +32,15 @@ export type TenantContext = {
   organizationId: string
   /** Clients this portal user may see. Required for the portal, ignored otherwise. */
   clientIds?: readonly string[]
+  /**
+   * Who is acting. Required for the portal, ignored otherwise.
+   *
+   * The portal's two write policies check it: a client's comment and a
+   * client's review decision must be attributed to the session's own user, so
+   * the attribution is enforced by the DATABASE and not by whichever value the
+   * handler happened to put in the INSERT.
+   */
+  userId?: string
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -104,6 +113,11 @@ async function applyContext(
       throw new Error('withPortal received an invalid client id')
     }
     await client.query('SELECT set_config($1, $2, true)', ['app.client_ids', clientIds.join(',')])
+
+    if (!context.userId || !UUID.test(context.userId)) {
+      throw new Error('A portal context requires the acting user id')
+    }
+    await client.query('SELECT set_config($1, $2, true)', ['app.user_id', context.userId])
   }
 }
 
@@ -179,7 +193,7 @@ export async function withUserLookup<T>(
 
 /** Client portal sessions. Reads the portal.* views only (ADR-026). */
 export function withPortal<T>(
-  context: TenantContext & { clientIds: readonly string[] },
+  context: TenantContext & { clientIds: readonly string[]; userId: string },
   fn: (db: TenantDb) => Promise<T>,
 ): Promise<T> {
   return run('portal', context, fn)

@@ -571,7 +571,7 @@ de risque synthétique — compensé par les prochaines étapes et les livrables
 
 <a id="adr-026"></a>
 ## ADR-026 — Vues `portal.*` : isolation au niveau colonne
-**Statut** : Proposée
+**Statut** : **Accepté** — mis en œuvre au LOT 9, précisé par ADR-061
 
 **Contexte** — RLS filtre des **lignes**. Or ADR-025 (santé), le budget, le temps passé et les compteurs
 de retard sont des **colonnes** de tables dont le client doit voir certaines lignes.
@@ -1701,6 +1701,211 @@ Les liens sont validés en `http`/`https` uniquement. Un `javascript:` dans un
 `null` des deux côtés, une chaîne d'espaces, un vrai lien) ; l'E2E soumet le
 formulaire vide et vérifie que la feuille **reste ouverte**, c'est-à-dire que
 rien n'a été créé.
+
+---
+
+## ADR-061 — `security_invoker` exige des droits par colonne, et c'est tant mieux
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 9
+
+**Contexte.** ADR-026 tranche : les vues `portal.*` portent
+`security_invoker = true`, pour que la RLS continue de s'appliquer **sous** la
+vue au lieu d'être contournée. À la première lecture du portail, tout a échoué :
+
+```
+permission denied for table projects
+```
+
+**La cause.** `security_invoker = true` fait exécuter la vue avec les droits de
+**l'appelant**. Or la migration 0002 révoque *tout* droit d'`app_portal` sur le
+schéma `public`. La RLS ne remplace pas un `GRANT` : une politique dit *quelles
+lignes*, un grant dit *si l'on peut demander*.
+
+**Les options, et pourquoi les deux premières sont mauvaises.**
+
+| | |
+|---|---|
+| `security_invoker = false` | La vue s'exécute comme son propriétaire et **court-circuite la RLS**. La vue redeviendrait la seule barrière — ce qu'ADR-026 refuse explicitement. |
+| `GRANT SELECT` sur la table entière | Le portail pourrait lire `health_score`. C'est exactement la fuite qu'on prévient. |
+| **`GRANT SELECT (colonnes)`** | ✅ |
+
+**Décision.** Le droit est accordé **par colonne**, et la liste est exactement
+ce que les vues sélectionnent. Vérifié contre PostgreSQL, pas supposé :
+
+```
+SELECT name FROM public.projects          → les mêmes lignes que la vue
+SELECT * FROM public.projects             → permission denied
+SELECT health_score FROM public.projects  → permission denied
+SELECT id FROM public.projects WHERE health_score > 0
+                                          → permission denied
+```
+
+Le dernier cas est celui qui compte : une colonne non accordée est refusée
+**jusque dans un `WHERE`**, donc un Health Score ne se devine pas non plus par
+dichotomie.
+
+La garantie d'ADR-026 est donc **inchangée** — aucune colonne interne n'atteint
+un client, par aucune route — mais elle est désormais tenue par le système de
+droits de PostgreSQL plutôt que par la vue seule. Ajouter une colonne à une
+table ne l'expose toujours pas : il faut un geste dans la vue **et** un geste
+dans le grant, dans une migration que quelqu'un relit.
+
+**Un corollaire : les sous-requêtes de politique aussi.** Une politique dont le
+`EXISTS` porte sur une **autre** table est une requête ordinaire : elle
+s'exécute avec les droits de l'appelant. Écrire
+`EXISTS (SELECT 1 FROM projects p WHERE p.is_client_visible …)` aurait obligé à
+accorder `is_client_visible` et `deleted_at` au portail — élargir la surface
+pour répondre à une question par oui ou non. Les politiques appellent donc des
+fonctions `SECURITY DEFINER` (`portal_sees_project`, `portal_sees_deliverable`,
+`portal_sees_result`, `portal_sees_file`, `portal_sees_person`,
+`portal_awaits_decision`) qui ne renvoient qu'un booléen.
+
+Ce n'est pas un trou : ces fonctions lisent les **mêmes** réglages de session
+que l'appelant (`app.organization_id`, `app.client_ids`), n'acceptent aucune
+entrée libre, fixent leur `search_path`, et sont révoquées de `PUBLIC`. Le vrai
+gain est ailleurs : « ce qui rend un projet visible d'un client » est écrit
+**une fois**. On le change là, et les jalons, objectifs, actions, livrables,
+résultats, commentaires, pièces jointes et le fil d'activité suivent.
+
+**Ce qui empêche la régression.** `tests/integration/portal-leak.test.ts`
+tente, pour dix couples table/colonne internes, la lecture directe, la lecture
+dans un `WHERE`, et `SELECT *` ; et vérifie que la table de base et la vue
+renvoient **les mêmes lignes**. `tests/integration/rls-coverage.test.ts` vérifie
+qu'`app_portal` ne détient aucun `SELECT` sur `public` et que ses droits
+d'écriture se limitent aux portes déclarées.
+
+---
+
+## ADR-062 — `is_client_visible` n'est pas une portée client
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 9
+
+**Contexte.** La suite de fuite portail a trouvé une vraie faille, écrite de ma
+main quelques minutes plus tôt. La politique de lecture sur `files` était :
+
+```sql
+organization_id = portal_organization_id() AND is_client_visible AND deleted_at IS NULL
+```
+
+Elle se lit bien. Elle est fausse. **Un client voyait les fichiers partagés d'un
+autre client de la même agence.**
+
+**Pourquoi la faute est facile.** `is_client_visible` dit « ceci *peut* être
+montré à un client » — pas « à **ce** client ». Sur `projects`, la portée vient
+de `client_id`. Sur `actions` ou `results`, elle vient du projet. Sur `files`,
+il n'y a **ni l'un ni l'autre** : un fichier n'appartient à personne
+directement. Le drapeau semblait donc suffire, et il ne suffisait pas.
+
+**Décision.** Un fichier doit avoir **emprunté une route** que le client peut
+voir. `portal_sees_file` en connaît trois, et il n'y en a pas d'autre :
+
+1. une pièce jointe sur un projet visible ;
+2. la version d'un livrable visible ;
+3. le logo d'un de ses propres comptes clients.
+
+Un fichier orphelin, fût-il coché « visible par le client », n'atteint personne.
+
+**La règle générale, à appliquer à chaque nouvelle table exposée** : un drapeau
+est un **consentement**, jamais une **portée**. Les deux sont nécessaires. C'est
+la même structure qu'ADR-057 (consentement + maturité) vue sous un autre angle.
+
+**Ce qui empêche la régression.** Deux tests nommés d'après la faille — « ne
+montre jamais un fichier partagé appartenant à un autre client » et « ne montre
+jamais un fichier orphelin » — plus le balayage générique qui exige **une seule
+ligne** par vue alors que la fixture en construit quatre. Vérifié par mutation :
+en remettant l'ancienne politique, quatre tests échouent en nommant le problème.
+
+**La leçon, consignée parce qu'elle se reproduira** : la suite de fuite portail
+n'est pas une formalité de fin de lot. Elle a trouvé une faille réelle dans du
+code écrit avec attention, quinze minutes après son écriture.
+
+---
+
+## ADR-063 — Le client commente un livrable et un projet, pas une action
+
+**Statut** : Accepté **par défaut, réversible** · **Date** : 2026-09-15 · **Lot** : 9
+
+**Contexte.** La décision ouverte **O9** demandait : le client peut-il commenter
+une **action**, ou seulement un livrable et un rapport ? Le LOT 9 ne pouvait pas
+livrer le fil de discussion sans trancher.
+
+**Décision (par défaut, à confirmer).** Le client commente un **livrable** et un
+**projet**. Pas une action.
+
+**Pourquoi ce défaut-là.**
+- C'est le choix **restrictif**, et la règle 2 dit que l'exposition est un
+  geste délibéré. Élargir plus tard est **additif** ; restreindre plus tard
+  retire quelque chose à des utilisateurs qui s'en servaient.
+- Une **action** est l'organisation interne du travail. Un livrable est ce que
+  le client reçoit ; un projet est ce qu'il achète. Les deux premiers sont des
+  objets de conversation, le troisième est une mécanique d'atelier.
+- Le portail n'expose d'ailleurs les actions qu'en lecture et seulement quand
+  elles sont explicitement partagées.
+
+`portalCommentSchema` fixe `entityType` à un ensemble **fermé de deux**, et la
+politique d'écriture ne connaît que ces routes.
+
+> ⚠️ **À confirmer par le commanditaire.** Ouvrir le commentaire client sur une
+> action demanderait : une valeur de plus dans le schéma, une route de plus dans
+> la politique d'écriture, et un fil sur la fiche action du portail. Aucune
+> migration destructive, aucune reprise de données.
+
+---
+
+## ADR-064 — Le portail écrit par des portes nommées, jamais par une vue
+
+**Statut** : Accepté · **Date** : 2026-09-15 · **Lot** : 9
+
+**Contexte.** Les vues `portal.*` sont des surfaces de **lecture**. Il fallait
+décider par où passent les deux écritures d'un client : un commentaire, et une
+décision sur un livrable.
+
+**Décision.** Vers les **tables de base**, à travers des politiques qui portent
+une clause `WITH CHECK`. Une vue sur une table filtrée n'est pas une cible
+d'insertion saine, et surtout : c'est le `WITH CHECK` qui rend l'écriture sûre,
+pas la vue.
+
+Trois portes, et la liste est figée par un test :
+
+| Table | Droit | Ce que la politique exige |
+|---|---|---|
+| `comments` | `INSERT` | `visibility = 'shared'`, `author_user_id = app.user_id`, et le projet est le sien |
+| `deliverable_reviews` | `INSERT` | `scope = 'client'`, `reviewer_user_id = app.user_id`, et le livrable **attend sa décision** |
+| `deliverables` | `UPDATE (status, approved_at, approved_by, updated_at)` | statut de départ `client_review`, statut d'arrivée `approved` ou `changes_requested` |
+| `audit_logs` | `INSERT` | même organisation, même acteur — **jamais de `SELECT`** |
+
+**Rien n'est pris de la charge utile.** Ni l'organisation, ni le client, ni
+l'auteur : les trois viennent de `app.organization_id`, `app.client_ids` et
+`app.user_id`, épinglés par `withPortal` **dans la transaction**. Un client ne
+peut donc pas signer au nom d'un autre, commenter chez le voisin, ni valider un
+livrable qui ne lui a jamais été envoyé — et rien de tout cela ne dépend du soin
+avec lequel le handler a été écrit.
+
+**Le `GRANT UPDATE` par colonne** sur `deliverables` est le seul endroit du
+projet où les droits par colonne de PostgreSQL sont le bon outil : un client
+change le statut et l'horodatage de validation, et ne peut toucher ni le titre,
+ni `is_client_visible`, ni le propriétaire — la requête est refusée avant même
+d'être évaluée.
+
+**La piste d'audit est une seule piste.** Une validation client est parmi les
+actes les plus lourds de conséquence du produit : elle est écrite dans
+`audit_logs`, dans la **même transaction** que le changement. D'où le `GRANT
+INSERT` — et le refus absolu du `SELECT`, parce que `audit_logs` traverse les
+tenants par construction et qu'un portail qui pourrait la lire lirait
+l'historique de toutes les organisations à la fois.
+
+**Un piège rencontré, pour la deuxième fois.** PostgreSQL ne sait pas inférer un
+type **enum** pour un paramètre **lié** : `INSERT INTO c (kind) VALUES ($1)`
+échoue avec *« column is of type entity_type but expression is of type text »*.
+Un littéral dans le texte SQL passe, un paramètre non. Même famille que le
+`CASE $1 WHEN 'avg'` du LOT 7 (ADR-053). Chaque valeur d'enum liée porte
+désormais son `::type`.
+
+**Ce qui empêche la régression.** `tests/integration/portal-leak.test.ts` tente
+un commentaire interne, un commentaire signé d'un autre, un commentaire chez un
+autre client, une revue « interne » écrite par le client, une publication, et la
+modification de n'importe quelle autre colonne : les six sont refusés par la
+base. `tests/e2e/portal.spec.ts` parcourt le cycle complet dans deux navigateurs.
 
 ---
 

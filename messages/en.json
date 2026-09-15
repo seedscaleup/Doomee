@@ -228,8 +228,7 @@
     "invalid": "This invitation is invalid or has expired.",
     "signInFirst": "Sign in or create an account to accept.",
     "clientTitle": "Your client space",
-    "clientBody": "This invitation gives you access to the progress of your account.",
-    "clientAccepted": "Access confirmed. You will get a link as soon as something is shared with you."
+    "clientBody": "This invitation gives you access to the progress of your account."
   },
   "roles": {
     "owner": "Owner",
@@ -930,6 +929,86 @@
       "title": "Delete this deliverable?",
       "description": "Its versions and its review history go with it.",
       "confirm": "Delete"
+    }
+  },
+  "portal": {
+    "title": "Client portal",
+    "shellLabel": "Portal navigation",
+    "switchAccount": "Account",
+    "nav": {
+      "overview": "Overview",
+      "projects": "Projects",
+      "deliverables": "Deliverables",
+      "results": "Results",
+      "reports": "Reports",
+      "messages": "Messages"
+    },
+    "overview": {
+      "title": "Overview",
+      "description": "Where your project stands, and what is waiting for you.",
+      "awaiting": "Waiting for your decision",
+      "awaitingCount": "{count} deliverable(s) await your decision",
+      "nothingWaiting": "Nothing is waiting for your decision right now.",
+      "projects": "Your projects",
+      "recent": "Latest news",
+      "noActivity": "No recent activity.",
+      "progress": "{percent}%"
+    },
+    "projects": {
+      "title": "Projects",
+      "description": "What we are working on for you.",
+      "empty": "No project shared yet.",
+      "back": "← Back to projects",
+      "objectives": "Objectives",
+      "noObjectives": "No objective shared.",
+      "target": "Target",
+      "actual": "Actual",
+      "period": "Period"
+    },
+    "deliverables": {
+      "title": "Deliverables",
+      "description": "What we deliver, and what awaits your feedback.",
+      "empty": "No deliverable shared yet.",
+      "back": "← Back to deliverables",
+      "version": "Version {version}",
+      "noVersion": "No version",
+      "open": "Open",
+      "download": "Download",
+      "sentOn": "Sent on {date}",
+      "decide": "Your decision",
+      "approve": "✓ Approve",
+      "requestChanges": "↻ Request changes",
+      "comment": "Your comment",
+      "commentRequired": "Tell us what needs changing.",
+      "decided": "Thank you, your decision is recorded.",
+      "history": "History",
+      "noHistory": "No decision yet.",
+      "internalReview": "Internal review",
+      "yourDecision": "Your decision",
+      "failed": "Your decision could not be recorded."
+    },
+    "results": {
+      "title": "Results",
+      "description": "What the work produced.",
+      "empty": "No result shared yet.",
+      "learned": "What we learned",
+      "next": "What we do next",
+      "on": "On {date}"
+    },
+    "reports": {
+      "title": "Reports",
+      "description": "Your periodic reports.",
+      "empty": "No report yet.",
+      "comingSoon": "Reports are coming soon."
+    },
+    "messages": {
+      "title": "Messages",
+      "description": "Your conversation with the team.",
+      "empty": "No message yet.",
+      "placeholder": "Write a message…",
+      "send": "Send",
+      "failed": "This message could not be sent.",
+      "onlyShared": "Your messages are visible to the team."
     }
   }
 }
