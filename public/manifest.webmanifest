@@ -1,0 +1,13 @@
+{
+  "name": "DOOMEE",
+  "short_name": "DOOMEE",
+  "description": "Planifier, réaliser, mesurer.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F5F2",
+  "theme_color": "#FFD43B",
+  "icons": [
+    { "src": "/icons/favicon-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/favicon-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
